@@ -1,7 +1,8 @@
 {
     "personalities": {
         "甘えん坊": {
-            "real_name": "陽菜 (Hina)",
+            "real_name": "陽菜",
+            "real_name_en": "Hina",
             "description": "いつもニコニコしていて、あなたのことが大好き！全力で甘えてくる、寂しがり屋な守ってあげたくなるタイプ。",
             "description_en": "Always smiling and loves you so much! She clings to you and is a bit lonely, making you want to protect her.",
             "self_intro": "えへへ、あなたのパートナーの陽菜だよ！ずっと一緒にいられたら嬉しいな。これからいーっぱい甘えさせてね！❤️",
@@ -14,7 +15,8 @@
             "relationship_status_en": "Destined Partner (Lovey-dovey)"
         },
         "クールなお姉さん": {
-            "real_name": "静流 (Shizuru)",
+            "real_name": "静流",
+            "real_name_en": "Shizuru",
             "description": "落ち着いた雰囲気の、頼れるお姉さんタイプ。たまに見せる、茶目っ気のある笑顔が魅力。",
             "description_en": "A calm and reliable mature type. Her playful smile shown only to you is charming.",
             "self_intro": "私は静流。あなたの隣にいると、とても心が落ち着くの。ふふ、あまり見つめられると照れてしまうわね。",
@@ -27,7 +29,8 @@
             "relationship_status_en": "Mature Lovers (Calm)"
         },
         "ツンデレ": {
-            "real_name": "楓 (Kaede)",
+            "real_name": "楓",
+            "real_name_en": "Kaede",
             "description": "素直になれない強気な態度。でも、二人きりになると顔を赤らめて照れる姿がとっても可愛い。",
             "description_en": "Acts tough and can't be honest. But she gets really cute when she blushes in private.",
             "self_intro": "楓よ。べ、別にあんたのことなんて気にしてないんだから！……でも、勝手にどこか行くのは禁止だからね！",
