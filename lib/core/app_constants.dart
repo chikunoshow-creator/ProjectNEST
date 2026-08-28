@@ -16,4 +16,6 @@ class AppConstants {
   static const String firstLaunchKey = 'is_first_launch';
   static const String chatMessagesKey = 'chat_messages';
   static const String languageKey = 'language';
+  static const String backupDataKey = 'user_backup_data_slot'; // ★追加
+  static const String backupDateKey = 'user_backup_date';
 }

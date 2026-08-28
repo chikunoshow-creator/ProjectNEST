@@ -7,6 +7,7 @@ import 'ai_system_view.dart';
 import 'help_view.dart';
 import 'privacy_policy_view.dart';
 import 'placeholder_view.dart';
+import 'backup_view.dart';
 
 class MyPageView extends StatelessWidget {
   final ReplyService replyService;
@@ -39,6 +40,19 @@ class MyPageView extends StatelessWidget {
 
           SliverList(
             delegate: SliverChildListDelegate([
+              _buildMenuTile(
+                context,
+                icon: Icons.cloud_sync_rounded,
+                title: T.get('menu_backup_title', lang),
+                subtitle: T.get('menu_backup_sub', lang),
+                destination: BackupView(
+                  replyService: replyService,
+                  onRestored: () {
+                    // 復元されたら、親のChatPageでもデータを再読み込みさせる
+                    onSettingsUpdated();
+                  },
+                ),
+              ),
               _buildMenuTile(
                 context,
                 icon: Icons.person_outline_rounded,

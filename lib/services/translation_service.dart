@@ -35,6 +35,22 @@ class T {
         'menu_support_title': '開発者を応援',
         'menu_support_sub': 'Project NESTの継続開発をサポート',
 
+        'menu_backup_title': 'バックアップと復元',
+        'menu_backup_sub': '大切なデータの保存・読み込み',
+        'backup_create': 'バックアップを作成',
+        'backup_create_sub': '現在の全データをファイルに保存します。',
+        'backup_restore': '思い出を復元',
+        'backup_restore_sub': 'ファイルからデータを読み込みます。',
+        'last_backup': '前回のバックアップ',
+        'no_backup_data': 'データがありません',
+        'backup_success': 'バックアップファイルを保存したよ ✨',
+        'restore_success': '思い出を復元したよ ❤️',
+        'restore_error': 'エラー：正しいバックアップファイルを選んでね。',
+        'restore_confirm_title': '思い出の復元',
+        'restore_confirm_msg':
+            '前回のバックアップ時点の状態に戻すよ。\n今の会話や親密度は上書きされちゃうけど、本当にいい？',
+        'restore_btn': '復元する',
+
         // --- リセットメニュー ---
         'history_reset': '思い出リセット',
         'reset_ask': 'どの思い出をリセットしますか？',
@@ -214,6 +230,22 @@ class T {
         'menu_policy_sub': 'For your safety and privacy',
         'menu_support_title': 'Support Creator',
         'menu_support_sub': 'Support the development',
+
+        'menu_backup_title': 'Backup & Restore',
+        'menu_backup_sub': 'Save or load your data',
+        'backup_create': 'Create Backup',
+        'backup_create_sub': 'Save all data to a file.',
+        'backup_restore': 'Restore Memories',
+        'backup_restore_sub': 'Load data from a backup file.',
+        'last_backup': 'Last Backup',
+        'no_backup_data': 'No data',
+        'backup_success': 'Backup file saved! ✨',
+        'restore_success': 'Memories restored! ❤️',
+        'restore_error': 'Error: Please select a valid backup file.',
+        'restore_confirm_title': 'Restore Memories',
+        'restore_confirm_msg':
+            'This will overwrite your current progress with the backup data. Are you sure?',
+        'restore_btn': 'Restore',
 
         // --- リセットメニュー ---
         'history_reset': 'Reset Memories',

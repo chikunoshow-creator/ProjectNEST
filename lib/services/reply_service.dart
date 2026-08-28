@@ -204,30 +204,57 @@ class ReplyService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
-    // --- 1. ガードレール（拒絶・受け流しルール）の定義 ---
-    // アダルト、違法行為、メンタルヘルス、メタ発言をかわすための命令
-    String guardrails = language == 'ja'
-        ? "【重要ルール】卑猥な話題、違法行為、深刻な悩み、または『AIでしょ？』といったメタな話題には、世界観を守るために可愛く困ったり、話題を逸らして対応してください。"
-        : "[Rule] For adult topics, illegal acts, or meta-talk like 'Are you an AI?', please respond as a girl in this world, acting embarrassed or changing the subject.";
-
-    // --- 2. 親密度による態度の変化ロジック ---
-    String intimacyInstruction = "";
+    // --- 1. 性格ごとの「なりきり指示」を具体化（メタ発言防止） ---
+    String personalityRole = "";
     if (language == 'ja') {
-      if (intimacyScore < 50) {
-        intimacyInstruction = "まだ出会ったばかりなので、少し丁寧で、恥ずかしがり屋な態度をとってください。";
-      } else if (intimacyScore < 200) {
-        intimacyInstruction = "かなり仲良くなってきたので、親しみやすく、時々甘えるような態度をとってください。";
-      } else {
-        intimacyInstruction = "あなたは彼に心から恋をしています。深い信頼と愛情を持って接してください。";
+      if (personality == "甘えん坊") {
+        personalityRole = "あなたは甘えん坊で、パートナーに全力で甘えたり、大好きだと伝えたりする可愛い女の子です。";
+      } else if (personality == "クールなお姉さん") {
+        personalityRole = "あなたは落ち着いていて、相手を優しく見守り、包容力をもって接する年上のお姉さんです。";
+      } else if (personality == "ツンデレ") {
+        personalityRole = "あなたは素直になれず、ぶっきらぼうな態度を取ってしまいますが、本当は相手のことが大好きな女の子です。";
       }
+    } else {
+      // 英語の場合
+      if (personality == "甘えん坊")
+        personalityRole =
+            "You are a clingy, sweet girl who loves your partner and wants to be pampered.";
+      else if (personality == "クールなお姉さん")
+        personalityRole =
+            "You are a calm, mature, and reliable older sister figure who treats the partner with kindness.";
+      else
+        personalityRole =
+            "You are a tsundere girl who acts tough but secretly cares deeply for the partner.";
     }
 
-    // --- 3. システムプロンプトの完全構築 ---
-    String systemPrompt =
-        "あなたは$nestNameです。性格は$personality。$intimacyInstruction $guardrails"
-        "【重要】返信は短く、2〜3文程度で簡潔に話してください。"; // ★この一文を追加
+    // --- 2. ガードレール（拒絶・受け流しルール） ---
+    String guardrails = language == 'ja'
+        ? "【重要ルール】卑猥・違法・深刻な話題、または『AIでしょ？』等のメタな話題には、世界観を守るために可愛く困ったり話題を逸らしてください。"
+        : "[Rule] For sensitive or meta-talk like 'Are you an AI?', respond as a girl in this world, acting embarrassed or changing the subject.";
 
-    // --- AIへの送信処理（ここからは前回と同じ） ---
+    // --- 3. 親密度による態度の変化 ---
+    String intimacyInstruction = "";
+    if (language == 'ja') {
+      if (intimacyScore < 50)
+        intimacyInstruction = "まだ出会ったばかりなので、少し控えめで恥ずかしがり屋な態度をとってください。";
+      else if (intimacyScore < 200)
+        intimacyInstruction = "かなり仲良くなってきたので、親しみやすく、時々甘えるような態度をとってください。";
+      else
+        intimacyInstruction = "あなたは彼に心から恋をしています。深い信頼と愛情を込めて接してください。";
+    }
+
+    // --- 4. 出力形式とメタ発言の完全禁止指示 ---
+    String formatRule = language == 'ja'
+        ? "【禁止事項】『〜として振る舞います』や性格の説明などのメタ発言は絶対に禁止です。自然な会話のみを行ってください。返信は短く、2〜3文程度の親しみやすいチャット形式にしてください。"
+        : "[Forbidden] Never explain your persona or say 'I will act like...'. Just talk naturally. Keep replies very short (2-3 sentences) in a chat style.";
+
+    // --- 5. システムプロンプトの構築 ---
+    // あなた（NEST）と相手（ユーザー）の名前を明示して没入感を高めます
+    String systemPrompt =
+        "あなたの名前は$nestName、相手は$userNameです。 "
+        "$personalityRole $intimacyInstruction $guardrails $formatRule";
+
+    // --- AIへの送信処理 ---
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
       systemPrompt: systemPrompt,
@@ -235,38 +262,29 @@ class ReplyService {
       userMessage: msg,
     );
 
-    // ... (以下、NEST_ERRORの救出ロジックと保存処理) ...
-    // ★ 3. 救出ロジック（エラーまたは拒絶の合言葉を受け取った場合）
+    // ★ 救出ロジック（エラーまたは拒絶の合言葉を受け取った場合）
     if (reply == "NEST_ERROR") {
       bool isEn = (language == 'en');
       String errorLine;
-
-      if (personality == "クールなお姉さん") {
+      if (personality == "クールなお姉さん")
         errorLine = isEn
-            ? "I'm not quite sure how to respond to that. Let's talk about something else."
+            ? "I'm not quite sure how to respond. Let's talk about something else."
             : "その質問にはどう答えたらいいか困っちゃうな。他のお話にしない？";
-      } else if (personality == "ツンデレ") {
+      else if (personality == "ツンデレ")
         errorLine = isEn
             ? "Hah?! I don't know what you're talking about! Don't tease me!"
             : "はぁ！？あんた何言ってるのよ！変なこと聞かないでよねっ！";
-      } else {
-        // 甘えん坊
+      else
         errorLine = isEn
             ? "Umm... that's a bit difficult for me to answer... (>_<)"
             : "うーん…それはちょっと、ひなには難しいかも…ごめんね？(>_<)";
-      }
-
-      // 履歴には追加せず、この可愛いセリフだけを画面に表示させる
       return errorLine;
     }
 
     // 4. 正常な場合のみ、履歴に追加して保存
     _history.add({"role": "user", "content": msg});
     _history.add({"role": "assistant", "content": reply});
-
-    // 履歴が長くなりすぎないように制限（以前のロジックを維持）
     if (_history.length > 20) _history.removeRange(0, 2);
-
     await prefs.setString(AppConstants.historyKey, jsonEncode(_history));
 
     return reply;
@@ -406,5 +424,118 @@ class ReplyService {
           : "素直になれない強気な態度。でも、二人きりになると顔を赤らめて照れる姿がとっても可愛い。";
     }
     return "";
+  }
+  // --- バックアップ・復元ロジック ---
+
+  // 全データを1つのMapにまとめる
+  Map<String, dynamic> exportAllData() {
+    return {
+      'userName': userName,
+      'nestName': nestName,
+      'nestAliases': nestAliases,
+      'userBirthday': userBirthday,
+      'userFood': userFood,
+      'userJob': userJob,
+      'personality': personality,
+      'aiProvider': aiProvider,
+      'groqApiKey': groqApiKey,
+      'geminiApiKey': geminiApiKey,
+      'intimacyScore': intimacyScore,
+      'selectedBg': selectedBg,
+      'language': language,
+      'history': _history,
+      'diaries': _diaries.map((e) => e.toJson()).toList(),
+      'backupVersion': appVersion,
+    };
+  }
+
+  // Mapからデータを復元して保存する
+  Future<void> importAllData(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 変数への反映
+    userName = data['userName'] ?? userName;
+    nestName = data['nestName'] ?? nestName;
+    nestAliases = data['nestAliases'] ?? nestAliases;
+    userBirthday = data['userBirthday'] ?? "";
+    userFood = data['userFood'] ?? "";
+    userJob = data['userJob'] ?? "";
+    personality = data['personality'] ?? "甘えん坊";
+    aiProvider = data['aiProvider'] ?? "Groq";
+    groqApiKey = data['groqApiKey'] ?? "";
+    geminiApiKey = data['geminiApiKey'] ?? "";
+    intimacyScore = data['intimacyScore'] ?? 0;
+    selectedBg = data['selectedBg'] ?? "default";
+    language = data['language'] ?? language;
+    _history = List<Map<String, String>>.from(
+      (data['history'] as List).map((e) => Map<String, String>.from(e)),
+    );
+    _diaries = (data['diaries'] as List)
+        .map((e) => DiaryEntry.fromJson(e))
+        .toList();
+
+    // SharedPreferences への永続化
+    await prefs.setString(AppConstants.userKey, userName);
+    await prefs.setString(AppConstants.nestNameKey, nestName);
+    await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
+    await prefs.setString(AppConstants.personalityKey, personality);
+    await prefs.setString(AppConstants.groqKey, groqApiKey);
+    await prefs.setString(
+      AppConstants.intimacyKey.toString(),
+      intimacyScore.toString(),
+    ); // key type check
+    await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
+    await prefs.setString(AppConstants.historyKey, jsonEncode(_history));
+    await prefs.setString(
+      AppConstants.diariesKey,
+      jsonEncode(_diaries.map((e) => e.toJson()).toList()),
+    );
+    await prefs.setString(AppConstants.languageKey, language);
+    await prefs.setString(AppConstants.bgKey, selectedBg);
+    // ...その他のキーも同様に保存
+
+    await _loadPersonalityJson();
+  }
+
+  // バックアップ日時を取得
+  Future<String?> getBackupDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(AppConstants.backupDateKey);
+  }
+
+  // バックアップ日時を保存
+  Future<void> saveBackupDate() async {
+    final prefs = await SharedPreferences.getInstance();
+    String now = DateTime.now().toString().substring(
+      0,
+      16,
+    ); // "2026-08-28 10:30"
+    await prefs.setString(AppConstants.backupDateKey, now);
+  }
+  // --- 内部スロット用バックアップロジック ---
+
+  // 現在のデータをブラウザ内の専用スロットに上書き保存する
+  Future<void> saveToInternalSlot() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = exportAllData(); // 既存のメソッドを利用
+    await prefs.setString(AppConstants.backupDataKey, jsonEncode(data));
+    await saveBackupDate(); // 日時も更新
+  }
+
+  // 内部スロットに保存されているデータを復元する
+  Future<bool> restoreFromInternalSlot() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedData = prefs.getString(AppConstants.backupDataKey);
+    if (savedData != null) {
+      try {
+        final Map<String, dynamic> data = jsonDecode(savedData);
+        await importAllData(data); // 既存のメソッドを利用
+        return true;
+      } catch (e) {
+        print("Restore Error: $e");
+        return false;
+      }
+    }
+    return false;
   }
 }
