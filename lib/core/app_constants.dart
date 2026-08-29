@@ -19,4 +19,5 @@ class AppConstants {
   static const String backupDataKey = 'user_backup_data_slot'; // ★追加
   static const String backupDateKey = 'user_backup_date';
   static const String startDateKey = 'start_date'; // ★追加：二人の記念日
+  static const String userMemoriesKey = 'user_memories'; // ユーザーに関する「気づき」
 }

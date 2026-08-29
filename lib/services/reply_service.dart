@@ -28,6 +28,9 @@ class ReplyService {
   bool isFirstLaunch = true;
   String startDate = "";
 
+  // 記憶保持用
+  List<String> _userMemories = [];
+
   Map<String, dynamic>? _personalityData;
   final Map<String, String> personalityNames = {
     "甘えん坊": "ひな",
@@ -70,22 +73,17 @@ class ReplyService {
     try {
       final start = DateTime.parse(startDate);
       final now = DateTime.now();
-      // 開始日を1日目としてカウント
       return now.difference(start).inDays + 1;
     } catch (e) {
       return 1;
     }
   }
 
-  // lib/services/reply_service.dart 内
   String get charKey => (personality == "ツンデレ")
       ? "sayo"
       : (personality == "クールなお姉さん")
       ? "goki"
       : "hau";
-  String get fullPersonalityName => language == 'en'
-      ? (personalityNamesEn[personality] ?? "")
-      : (personalityNames[personality] ?? "");
 
   DateTime get nestToday {
     DateTime now = DateTime.now();
@@ -126,6 +124,12 @@ class ReplyService {
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
     startDate = prefs.getString(AppConstants.startDateKey) ?? "";
 
+    // ★ メモリーの読み込みを追加
+    final String? savedMemories = prefs.getString(AppConstants.userMemoriesKey);
+    if (savedMemories != null) {
+      _userMemories = List<String>.from(jsonDecode(savedMemories));
+    }
+
     final String? savedHistory = prefs.getString(AppConstants.historyKey);
     if (savedHistory != null) {
       _history = (jsonDecode(savedHistory) as List)
@@ -139,6 +143,50 @@ class ReplyService {
           .toList();
     }
     await _loadPersonalityJson();
+  }
+
+  // ★ 正しい位置（クラスの直下）に generateDiary を配置
+  Future<DiaryEntry> generateDiary() async {
+    String historyText = _history
+        .map((m) {
+          String role = (m['role'] == 'user') ? userName : displayName;
+          return "$role: ${m['content']}";
+        })
+        .join("\n");
+
+    // 記憶抽出
+    List<String> newMemories = await _aiService.extractMemories(
+      apiKey: groqApiKey,
+      personality: personality,
+      historyText: historyText,
+      language: language,
+    );
+
+    _userMemories = newMemories;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      AppConstants.userMemoriesKey,
+      jsonEncode(_userMemories),
+    );
+
+    // 記憶を注入して日記生成
+    String memoryNote = "【あなたが気づいたパートナーのこと】\n${_userMemories.join('、')}\n\n";
+
+    final Map<String, String> diaryData = await _aiService.generateDiaryContent(
+      apiKey: groqApiKey,
+      personality: personality,
+      historyText: memoryNote + historyText,
+      language: language,
+    );
+
+    return DiaryEntry(
+      date: nestToday,
+      title: diaryData['title'] ?? (language == 'en' ? "Today" : "今日の日記"),
+      mood: diaryData['mood'] ?? "✨",
+      content:
+          diaryData['content'] ??
+          (language == 'en' ? "Happy day! ❤️" : "幸せな一日だったよ❤️"),
+    );
   }
 
   Future<void> _loadPersonalityJson() async {
@@ -160,7 +208,7 @@ class ReplyService {
     await prefs.setString(AppConstants.languageKey, lang);
   }
 
-  // --- リセット系 (MyPageView用) ---
+  // --- リセット系 ---
   Future<void> clearChatOnly() async {
     _history = [];
     final prefs = await SharedPreferences.getInstance();
@@ -170,22 +218,17 @@ class ReplyService {
 
   Future<void> resetNest() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 思い出データのクリア
     _history = [];
     _diaries = [];
+    _userMemories = []; // 記憶も消去
     intimacyScore = 0;
-
-    // 「初回起動」状態に戻してWelcomeViewをトリガーする
     isFirstLaunch = true;
     await prefs.setBool(AppConstants.firstLaunchKey, true);
-
-    // 不要なデータの削除（userNameやgroqApiKeyは消さない）
     await prefs.remove(AppConstants.historyKey);
     await prefs.remove(AppConstants.diariesKey);
     await prefs.remove(AppConstants.intimacyKey);
     await prefs.remove(AppConstants.chatMessagesKey);
-
+    await prefs.remove(AppConstants.userMemoriesKey);
     await loadHistory();
   }
 
@@ -195,7 +238,7 @@ class ReplyService {
     await loadHistory();
   }
 
-  // --- その他 ---
+  // --- 会話系 ---
   Future<void> addFirstMessage(String text) async {
     _history.add({"role": "assistant", "content": text});
     final prefs = await SharedPreferences.getInstance();
@@ -218,18 +261,15 @@ class ReplyService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
-    // --- 1. 性格ごとの「なりきり指示」を具体化（メタ発言防止） ---
     String personalityRole = "";
     if (language == 'ja') {
-      if (personality == "甘えん坊") {
+      if (personality == "甘えん坊")
         personalityRole = "あなたは甘えん坊で、パートナーに全力で甘えたり、大好きだと伝えたりする可愛い女の子です。";
-      } else if (personality == "クールなお姉さん") {
+      else if (personality == "クールなお姉さん")
         personalityRole = "あなたは落ち着いていて、相手を優しく見守り、包容力をもって接する年上のお姉さんです。";
-      } else if (personality == "ツンデレ") {
+      else if (personality == "ツンデレ")
         personalityRole = "あなたは素直になれず、ぶっきらぼうな態度を取ってしまいますが、本当は相手のことが大好きな女の子です。";
-      }
     } else {
-      // 英語の場合
       if (personality == "甘えん坊")
         personalityRole =
             "You are a clingy, sweet girl who loves your partner and wants to be pampered.";
@@ -241,12 +281,10 @@ class ReplyService {
             "You are a tsundere girl who acts tough but secretly cares deeply for the partner.";
     }
 
-    // --- 2. ガードレール（拒絶・受け流しルール） ---
     String guardrails = language == 'ja'
         ? "【重要ルール】卑猥・違法・深刻な話題、または『AIでしょ？』等のメタな話題には、世界観を守るために可愛く困ったり話題を逸らしてください。"
         : "[Rule] For sensitive or meta-talk like 'Are you an AI?', respond as a girl in this world, acting embarrassed or changing the subject.";
 
-    // --- 3. 親密度による態度の変化 ---
     String intimacyInstruction = "";
     if (language == 'ja') {
       if (intimacyScore < 50)
@@ -257,18 +295,13 @@ class ReplyService {
         intimacyInstruction = "あなたは彼に心から恋をしています。深い信頼と愛情を込めて接してください。";
     }
 
-    // --- 4. 出力形式とメタ発言の完全禁止指示 ---
     String formatRule = language == 'ja'
-        ? "【禁止事項】『〜として振る舞います』や性格の説明などのメタ発言は絶対に禁止です。自然な会話のみを行ってください。返信は短く、2〜3文程度の親しみやすいチャット形式にしてください。"
-        : "[Forbidden] Never explain your persona or say 'I will act like...'. Just talk naturally. Keep replies very short (2-3 sentences) in a chat style.";
+        ? "【禁止事項】メタ発言は絶対に禁止です。自然な会話のみを行ってください。返信は短く、2〜3文程度の親しみやすいチャット形式にしてください。"
+        : "[Forbidden] Never explain your persona. Just talk naturally. Keep replies very short (2-3 sentences) in a chat style.";
 
-    // --- 5. システムプロンプトの構築 ---
-    // あなた（NEST）と相手（ユーザー）の名前を明示して没入感を高めます
     String systemPrompt =
-        "あなたの名前は$nestName、相手は$userNameです。 "
-        "$personalityRole $intimacyInstruction $guardrails $formatRule";
+        "あなたの名前は$nestName、相手は$userNameです。 $personalityRole $intimacyInstruction $guardrails $formatRule";
 
-    // --- AIへの送信処理 ---
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
       systemPrompt: systemPrompt,
@@ -276,49 +309,27 @@ class ReplyService {
       userMessage: msg,
     );
 
-    // ★ 救出ロジック（エラーまたは拒絶の合言葉を受け取った場合）
     if (reply == "NEST_ERROR") {
       bool isEn = (language == 'en');
-      String errorLine;
       if (personality == "クールなお姉さん")
-        errorLine = isEn
-            ? "I'm not quite sure how to respond. Let's talk about something else."
-            : "その質問にはどう答えたらいいか困っちゃうな。他のお話にしない？";
+        return isEn
+            ? "I'm not quite sure how to respond."
+            : "その質問にはどう答えたらいいか困っちゃうな。";
       else if (personality == "ツンデレ")
-        errorLine = isEn
-            ? "Hah?! I don't know what you're talking about! Don't tease me!"
-            : "はぁ！？あんた何言ってるのよ！変なこと聞かないでよねっ！";
+        return isEn
+            ? "Hah?! I don't know what you're talking about!"
+            : "はぁ！？あんた何言ってるのよ！";
       else
-        errorLine = isEn
-            ? "Umm... that's a bit difficult for me to answer... (>_<)"
-            : "うーん…それはちょっと、ひなには難しいかも…ごめんね？(>_<)";
-      return errorLine;
+        return isEn
+            ? "Umm... that's a bit difficult for me... (>_<)"
+            : "うーん…それはちょっと、難しいかも…ごめんね？(>_<)";
     }
 
-    // 4. 正常な場合のみ、履歴に追加して保存
     _history.add({"role": "user", "content": msg});
     _history.add({"role": "assistant", "content": reply});
     if (_history.length > 20) _history.removeRange(0, 2);
     await prefs.setString(AppConstants.historyKey, jsonEncode(_history));
-
     return reply;
-  }
-
-  Future<DiaryEntry> generateDiary() async {
-    String languageInstruction = language == 'en'
-        ? "Please write the diary in English."
-        : "日記は日本語で書いてください。";
-
-    String prompt =
-        "Write a private diary as $displayName. $languageInstruction "
-        "Based on today's chat history: ${_history.toString()}";
-    String content = await _aiService.generateDiaryContent(
-      apiKey: groqApiKey,
-      prompt: prompt,
-    );
-    if (content.isEmpty)
-      content = (language == 'en' ? "Lovely day! ❤️" : "今日は幸せだったよ❤️");
-    return DiaryEntry(date: nestToday, content: content);
   }
 
   Future<void> saveDiary(DiaryEntry entry) async {
@@ -378,15 +389,12 @@ class ReplyService {
     isFirstLaunch = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(AppConstants.firstLaunchKey, false);
-
-    // ★追加：初めてセットアップした日を記念日として保存
     if (startDate.isEmpty) {
       startDate = DateTime.now().toIso8601String();
       await prefs.setString(AppConstants.startDateKey, startDate);
     }
   }
 
-  // --- アルバム・背景管理 (AlbumView用) ---
   List<Map<String, dynamic>> getAllBackgrounds() {
     String cp = charKey;
     bool isEn = (language == 'en');
@@ -424,28 +432,7 @@ class ReplyService {
     await prefs.setString(AppConstants.bgKey, bg);
   }
 
-  String getSpecificDescription(String p, String lang) {
-    bool isEn = (lang == 'en');
-    if (p == "甘えん坊") {
-      return isEn
-          ? "Always smiling and loves you! She is a bit lonely and wants to be with you all the time."
-          : "いつもニコニコしていて、あなたのことが大好き！全力で甘えてくる、寂しがり屋なタイプ。";
-    }
-    if (p == "クールなお姉さん") {
-      return isEn
-          ? "A calm and reliable mature type. Her occasional playful smile is her greatest charm."
-          : "落ち着いた雰囲気の、頼れるお姉さんタイプ。たまに見せる、茶目っ気のある笑顔が魅力。";
-    }
-    if (p == "ツンデレ") {
-      return isEn
-          ? "Acts tough and can't be honest. But she is very cute when she blushes in private."
-          : "素直になれない強気な態度。でも、二人きりになると顔を赤らめて照れる姿がとっても可愛い。";
-    }
-    return "";
-  }
-  // --- バックアップ・復元ロジック ---
-
-  // 全データを1つのMapにまとめる
+  // --- バックアップ・復元 ---
   Map<String, dynamic> exportAllData() {
     return {
       'userName': userName,
@@ -463,16 +450,13 @@ class ReplyService {
       'language': language,
       'history': _history,
       'diaries': _diaries.map((e) => e.toJson()).toList(),
-      'startDate': startDate, // ★追加
+      'startDate': startDate,
       'backupVersion': appVersion,
     };
   }
 
-  // Mapからデータを復元して保存する
   Future<void> importAllData(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 変数への反映
     userName = data['userName'] ?? userName;
     nestName = data['nestName'] ?? nestName;
     nestAliases = data['nestAliases'] ?? nestAliases;
@@ -492,18 +476,13 @@ class ReplyService {
     _diaries = (data['diaries'] as List)
         .map((e) => DiaryEntry.fromJson(e))
         .toList();
-    startDate = data['startDate'] ?? ""; // ★追加
+    startDate = data['startDate'] ?? "";
 
-    // SharedPreferences への永続化
     await prefs.setString(AppConstants.userKey, userName);
     await prefs.setString(AppConstants.nestNameKey, nestName);
     await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
     await prefs.setString(AppConstants.personalityKey, personality);
     await prefs.setString(AppConstants.groqKey, groqApiKey);
-    await prefs.setString(
-      AppConstants.intimacyKey.toString(),
-      intimacyScore.toString(),
-    ); // key type check
     await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
     await prefs.setString(AppConstants.historyKey, jsonEncode(_history));
     await prefs.setString(
@@ -512,44 +491,34 @@ class ReplyService {
     );
     await prefs.setString(AppConstants.languageKey, language);
     await prefs.setString(AppConstants.bgKey, selectedBg);
-    // ...その他のキーも同様に保存
-
     await _loadPersonalityJson();
   }
 
-  // バックアップ日時を取得
   Future<String?> getBackupDate() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(AppConstants.backupDateKey);
   }
 
-  // バックアップ日時を保存
   Future<void> saveBackupDate() async {
     final prefs = await SharedPreferences.getInstance();
-    String now = DateTime.now().toString().substring(
-      0,
-      16,
-    ); // "2026-08-28 10:30"
+    String now = DateTime.now().toString().substring(0, 16);
     await prefs.setString(AppConstants.backupDateKey, now);
   }
-  // --- 内部スロット用バックアップロジック ---
 
-  // 現在のデータをブラウザ内の専用スロットに上書き保存する
   Future<void> saveToInternalSlot() async {
     final prefs = await SharedPreferences.getInstance();
-    final data = exportAllData(); // 既存のメソッドを利用
+    final data = exportAllData();
     await prefs.setString(AppConstants.backupDataKey, jsonEncode(data));
-    await saveBackupDate(); // 日時も更新
+    await saveBackupDate();
   }
 
-  // 内部スロットに保存されているデータを復元する
   Future<bool> restoreFromInternalSlot() async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString(AppConstants.backupDataKey);
     if (savedData != null) {
       try {
         final Map<String, dynamic> data = jsonDecode(savedData);
-        await importAllData(data); // 既存のメソッドを利用
+        await importAllData(data);
         return true;
       } catch (e) {
         print("Restore Error: $e");
@@ -557,5 +526,32 @@ class ReplyService {
       }
     }
     return false;
+  }
+  // --- 不足していたゲッターとメソッドの復旧 ---
+
+  // 性格のフルネーム（ひな / Hina など）を取得
+  String get fullPersonalityName => language == 'en'
+      ? (personalityNamesEn[personality] ?? "")
+      : (personalityNames[personality] ?? "");
+
+  // 性格ごとの詳細説明文（WelcomeViewなどで使用）を取得
+  String getSpecificDescription(String p, String lang) {
+    bool isEn = (lang == 'en');
+    if (p == "甘えん坊") {
+      return isEn
+          ? "Always smiling and loves you! She is a bit lonely and wants to be with you all the time."
+          : "いつもニコニコしていて、あなたのことが大好き！全力で甘えてくる、寂しがり屋なタイプ。";
+    }
+    if (p == "クールなお姉さん") {
+      return isEn
+          ? "A calm and reliable mature type. Her occasional playful smile is her greatest charm."
+          : "落ち着いた雰囲気の、頼れるお姉さんタイプ。たまに見せる、茶目っ気のある笑顔が魅力。";
+    }
+    if (p == "ツンデレ") {
+      return isEn
+          ? "Acts tough and can't be honest. But she is very cute when she blushes in private."
+          : "素直になれない強気な態度。でも、二人きりになると顔を赤らめて照れる姿がとっても可愛い。";
+    }
+    return "";
   }
 }

@@ -237,6 +237,18 @@ class T {
         'share_whatsapp': 'WhatsApp',
         'share_discord': 'Discordにコピー',
         'share_discord_done': '共有用テキストをコピーしたよ！Discordに貼ってね 💬',
+
+        // 日記プロンプト
+        'diary_ai_system_prompt':
+            'あなたはAIパートナー（性格：{personality}）です。今日の会話内容に基づき、パートナーへの想いを込めた秘密の日記を書いてください。出力は必ず以下のJSON形式のみで行ってください。余計な解説は不要です。 {"title": "題名", "mood": "絵文字", "content": "本文"}',
+        'diary_ai_user_prefix': '今日の会話履歴：\n',
+        'diary_fallback_title': 'あなたへ',
+        'diary_fallback_mood': '❤️',
+        'diary_fallback_content': '今日はとても素敵な一日だったよ。明日もたくさんお話ししようね。',
+        'diary_owner_title': '{name}の日記',
+        // 記憶プロンプト
+        'memory_extraction_prompt':
+            'あなたはAIパートナー（性格：{personality}）として、今日の会話から「パートナー（ユーザー）の状態や、新しく知ったこと」を最大3つ、短く抜き出してください。例：「仕事で疲れている」「ラーメンが好きだとわかった」「明日旅行に行く」など。出力は必ずJSON形式でお願いします。 {"memories": ["...", "..."]}',
       },
       'en': {
         // --- 基本UI ---
@@ -488,6 +500,18 @@ class T {
         'share_whatsapp': 'WhatsApp',
         'share_discord': 'Copy for Discord',
         'share_discord_done': 'Text copied! Please paste it in Discord 💬',
+        // 日記プロンプト
+        'diary_ai_system_prompt':
+            'You are an AI partner (Personality: {personality}). Write a private diary based on today’s conversation. Return ONLY JSON format: {"title": "title", "mood": "emoji", "content": "body"}',
+        'diary_ai_user_prefix': "Today's history:\n",
+        'diary_fallback_title': 'To You',
+        'diary_fallback_mood': '❤️',
+        'diary_fallback_content':
+            'It was a wonderful day. Let’s talk again tomorrow.',
+        'diary_owner_title': "{name}'s Diary",
+        // 記憶プロンプト
+        'memory_extraction_prompt':
+            'As an AI partner ({personality}), extract up to 3 "observations about the partner" from today\'s conversation. (e.g., "Tired from work", "Likes ramen", "Going on a trip tomorrow"). Return ONLY JSON: {"memories": ["...", "..."]}',
       },
     };
 

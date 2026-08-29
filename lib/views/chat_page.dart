@@ -88,11 +88,14 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   // --- ロジック: 日記生成 ---
+  // class _ChatPageState 内
   Future<void> _checkAutoDiary() async {
     if (_replyService.needsDiaryUpdate &&
         _replyService.getHistory().isNotEmpty) {
+      // ReplyService側の generateDiary を呼び出す
       DiaryEntry entry = await _replyService.generateDiary();
       await _replyService.saveDiary(entry);
+
       _addSystemMessage(
         T
             .get('diary_updated_msg', _replyService.language)
