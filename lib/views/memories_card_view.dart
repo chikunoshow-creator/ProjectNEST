@@ -1,68 +1,91 @@
-// import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import '../services/reply_service.dart';
-import '../services/translation_service.dart';
+import '../../services/reply_service.dart';
+import '../../services/translation_service.dart';
 
-class MemoriesCardView extends StatelessWidget {
+class MemoriesCardView extends StatefulWidget {
   final ReplyService replyService;
-  final GlobalKey _cardKey = GlobalKey();
+  const MemoriesCardView({super.key, required this.replyService});
 
-  MemoriesCardView({super.key, required this.replyService});
+  @override
+  State<MemoriesCardView> createState() => _MemoriesCardViewState();
+}
+
+class _MemoriesCardViewState extends State<MemoriesCardView> {
+  final GlobalKey _cardKey = GlobalKey();
 
   // --- 共通：共有用テキストの作成 ---
   String _getShareText(String lang) {
     return T
         .get('card_share_template', lang)
-        .replaceAll('{name}', replyService.displayName)
-        .replaceAll('{days}', replyService.daysTogether.toString());
+        .replaceAll('{name}', widget.replyService.displayName)
+        .replaceAll('{days}', widget.replyService.daysTogether.toString());
   }
 
-  // --- 1. 画像のキャプチャとダウンロード処理 (共通) ---
+  // --- 1. 画像のキャプチャとダウンロード処理 ---
   Future<void> _captureAndSave(
     BuildContext context,
     String lang, {
-    bool showSnackBar = true,
+    bool isSharing = false,
   }) async {
     try {
-      RenderRepaintBoundary boundary =
-          _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      // 描画を確実にするため一瞬待つ
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      RenderRepaintBoundary? boundary =
+          _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
+      if (byteData == null) return;
+      Uint8List pngBytes = byteData.buffer.asUint8List();
 
       final blob = html.Blob([pngBytes]);
       final url = html.Url.createObjectUrlFromBlob(blob);
+
       html.AnchorElement(href: url)
         ..setAttribute("download", "NEST_Memories_Card.png")
         ..click();
+
       html.Url.revokeObjectUrl(url);
 
-      if (showSnackBar) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(T.get('backup_success', lang))));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isSharing
+                  ? (lang == 'ja'
+                        ? "画像を保存したよ！SNSに添付してね ✨"
+                        : "Image saved! Please attach it ✨")
+                  : T.get('backup_success', lang),
+            ),
+            backgroundColor: Colors.pinkAccent,
+          ),
+        );
       }
     } catch (e) {
       debugPrint("Capture Error: $e");
     }
   }
 
-  // --- 2. 画像保存 ＋ SNSシェアを同時に行う ---
+  // --- 2. 画像保存 ＋ SNSシェア ---
   Future<void> _captureAndShareSns(
     String platform,
     String lang,
     BuildContext context,
   ) async {
-    // まず画像を保存（スナックバーは出さない）
-    await _captureAndSave(context, lang, showSnackBar: false);
+    // まず画像を保存
+    await _captureAndSave(context, lang, isSharing: true);
 
-    // その後、SNSを開く
+    // ダウンロードとSNS起動が重ならないよう少し待機
+    await Future.delayed(const Duration(milliseconds: 500));
+
     final text = _getShareText(lang);
     String url = "";
 
@@ -79,9 +102,11 @@ class MemoriesCardView extends StatelessWidget {
         break;
       case 'discord':
         Clipboard.setData(ClipboardData(text: text));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(T.get('share_discord_done', lang))),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(T.get('share_discord_done', lang))),
+          );
+        }
         url = "https://discord.com/channels/@me";
         break;
     }
@@ -93,8 +118,8 @@ class MemoriesCardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lang = replyService.language;
-    final charKey = replyService.charKey;
+    final lang = widget.replyService.language;
+    final charKey = widget.replyService.charKey;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF5F5),
@@ -111,7 +136,6 @@ class MemoriesCardView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
-            // カード本体
             Center(
               child: RepaintBoundary(
                 key: _cardKey,
@@ -119,8 +143,6 @@ class MemoriesCardView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 40),
-
-            // アクションエリア
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
@@ -134,8 +156,6 @@ class MemoriesCardView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // SNSボタンのグリッド（画像保存 ＋ シェア）
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -170,12 +190,9 @@ class MemoriesCardView extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 40),
                   const Divider(),
                   const SizedBox(height: 20),
-
-                  // 保存のみしたい人向けのボタン（下部に配置）
                   TextButton.icon(
                     onPressed: () => _captureAndSave(context, lang),
                     icon: const Icon(
@@ -212,23 +229,16 @@ class MemoriesCardView extends StatelessWidget {
     );
   }
 
-  // --- 以下、補助UIパーツ (_buildCardUI, _buildSnsButton 等は前回を継承) ---
-  // ... (コードが重複するため省略しますが、実際のファイルには含めてください)
-  // --- カードのデザイン本体（前回と同じですが整理しました） ---
+  // --- カードのデザイン本体 ---
   Widget _buildCardUI(String lang, String charKey) {
     return Container(
       width: 380,
       height: 220,
       decoration: BoxDecoration(
-        // ★ カード全体の背景にグラデーションを設定
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            Colors.pinkAccent.withValues(alpha: 0.15), // 左端：淡いピンク
-            Colors.white, // 右側：完全な白
-          ],
-          // ★ 0.0（左端）から 0.6（約2/3）にかけて白へ変化させ、残りは白にする設定
+          colors: [Colors.pinkAccent.withValues(alpha: 0.15), Colors.white],
           stops: const [0.0, 0.6],
         ),
         borderRadius: BorderRadius.circular(25),
@@ -242,13 +252,11 @@ class MemoriesCardView extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // --- 左側：キャラクタービジュアルエリア ---
           Expanded(
             flex: 4,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // アイコンを際立たせるための白い縁取り
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: const BoxDecoration(
@@ -267,7 +275,7 @@ class MemoriesCardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  replyService.displayName,
+                  widget.replyService.displayName,
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -278,8 +286,6 @@ class MemoriesCardView extends StatelessWidget {
               ],
             ),
           ),
-
-          // --- 右側：ステータス情報エリア（背景は既に真っ白） ---
           Expanded(
             flex: 6,
             child: Padding(
@@ -290,17 +296,16 @@ class MemoriesCardView extends StatelessWidget {
                 children: [
                   _infoRow(
                     T.get('card_days_together', lang),
-                    "${replyService.daysTogether}${T.get('card_days_unit', lang)}",
+                    "${widget.replyService.daysTogether}${T.get('card_days_unit', lang)}",
                     Icons.calendar_today_rounded,
                   ),
                   const SizedBox(height: 18),
                   _infoRow(
                     T.get('card_intimacy', lang),
-                    "❤️ ${replyService.intimacyScore}",
+                    "❤️ ${widget.replyService.intimacyScore}",
                     Icons.favorite_rounded,
                   ),
                   const Spacer(),
-                  // 右下の公式クレジット
                   Align(
                     alignment: Alignment.bottomRight,
                     child: Column(
@@ -335,7 +340,6 @@ class MemoriesCardView extends StatelessWidget {
     );
   }
 
-  // 右側セクション用の小パーツ
   Widget _infoRow(String label, String value, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,6 +382,7 @@ class MemoriesCardView extends StatelessWidget {
   ) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
