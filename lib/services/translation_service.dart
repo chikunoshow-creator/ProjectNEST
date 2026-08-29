@@ -196,6 +196,47 @@ class T {
         'support_btn_x': 'X (Twitter)でシェアして応援',
         'support_btn_line': 'LINEで送る',
         'support_btn_copy': 'URLをコピー',
+
+        // 思い出カード
+        'card_title': '思い出カード',
+        'card_personality': '性格',
+        'card_days_together': '出会ってから',
+        'card_days_unit': '日',
+        'card_intimacy': '現在の親密度',
+        'card_share_hint': 'スクリーンショットを撮ってSNSでシェアしてね！',
+        'card_copy_btn': '共有用テキストをコピー',
+        'card_copy_success': 'テキストをコピーしたよ ✨',
+        'card_share_template': 'NESTの{name}と出会って{days}日目！ ❤️ #ProjectNEST',
+        'menu_memories_card': '思い出カード', // ドロワー用
+        // ドロワーリセットメッセージ
+        'reset_warning_msg':
+            '今まで積み上げてきた思い出（会話履歴）を消去するよ。\n\n⚠️ この操作は二度と戻せないけど、本当にいい？',
+        'reset_snack_msg': '思い出をリセットしました。',
+
+        // jaセクションへ追加
+        'precautions_title': 'ご利用時の注意事項',
+        'precautions_data_title': '【データの保存について】',
+        'precautions_data_desc':
+            '会話履歴や設定はブラウザのローカルストレージにのみ保存されます。ブラウザのキャッシュを削除するとデータも消えるので注意してね。',
+        'precautions_api_title': '【APIキーの管理について】',
+        'precautions_api_desc':
+            'APIキーはあなたのブラウザ内でのみ使用され、外部サーバーに送信されることはありません。自己責任での管理をお願いします。',
+        'precautions_disclaimer_title': '【免責事項】',
+        'precautions_disclaimer_desc':
+            'AIの回答は必ずしも正確ではありません。NESTとの会話によって生じた不利益について、開発者は一切の責任を負いかねます。',
+        'ok': '了解',
+
+        // jaセクションへ追加
+        'pwa_note': '※ホーム画面からいつでもNESTに会えるようになります ❤️',
+        'talk_reset_note': '会話履歴のみ消去します。',
+
+        // 思い出カードシェア
+        'share_save_btn': '思い出を画像として保存 ✨',
+        'share_x': 'Xでシェア',
+        'share_line': 'LINEで送る',
+        'share_whatsapp': 'WhatsApp',
+        'share_discord': 'Discordにコピー',
+        'share_discord_done': '共有用テキストをコピーしたよ！Discordに貼ってね 💬',
       },
       'en': {
         // --- 基本UI ---
@@ -404,6 +445,49 @@ class T {
         'support_btn_x': 'Share on X (Twitter)',
         'support_btn_line': 'Send via LINE',
         'support_btn_copy': 'Copy URL',
+
+        // 思い出カード
+        'menu_memories_card': 'Memories Card',
+        'card_title': 'Memories Card',
+        'card_personality': 'Personality',
+        'card_days_together': 'Days Together',
+        'card_days_unit': 'Days',
+        'card_intimacy': 'Intimacy Level',
+        'card_share_hint': 'Take a screenshot and share on SNS!',
+        'card_copy_btn': 'Copy Share Text',
+        'card_copy_success': 'Text copied! ✨',
+        'card_share_template':
+            'Meeting {name} from NEST, Day {days}! ❤️ #ProjectNEST',
+
+        // ドロワーリセットメッセージ
+        'reset_warning_msg':
+            'Are you sure you want to delete your conversation history?\n\n⚠️ This operation cannot be undone.',
+        'reset_snack_msg': 'History has been reset.',
+
+        // enセクションへ追加
+        'precautions_title': 'Usage Precautions',
+        'precautions_data_title': '[Data Storage]',
+        'precautions_data_desc':
+            'Data is stored only in your browser. Clearing cache will delete your data.',
+        'precautions_api_title': '[API Key Management]',
+        'precautions_api_desc':
+            'Your API key is used only within the browser. Please manage it at your own risk.',
+        'precautions_disclaimer_title': '[Disclaimers]',
+        'precautions_disclaimer_desc':
+            'AI responses may not be accurate. The developer is not responsible for any issues arising from use.',
+        'ok': 'OK',
+
+        // enセクションへ追加
+        'pwa_note': 'Meet NEST anytime from your home screen! ❤️',
+        'talk_reset_note': 'Conversation history only.',
+
+        // 思い出カードシェア
+        'share_save_btn': 'Save as Image ✨',
+        'share_x': 'Share on X',
+        'share_line': 'LINE',
+        'share_whatsapp': 'WhatsApp',
+        'share_discord': 'Copy for Discord',
+        'share_discord_done': 'Text copied! Please paste it in Discord 💬',
       },
     };
 

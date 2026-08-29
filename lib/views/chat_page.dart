@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_constants.dart';
 import '../models/chat_message.dart';
@@ -10,12 +9,18 @@ import '../models/diary_entry.dart';
 import '../services/reply_service.dart';
 import '../services/translation_service.dart';
 
-import 'album_view.dart'; // ★ これを追加
 import 'nest/nest_view.dart';
 import 'talk/talk_view.dart';
 import 'mypage/mypage_view.dart';
 import 'welcome_view.dart';
-import 'diary_list_page.dart';
+import '../widgets/common_splash_screen.dart'; // ★ これを追加
+import '../widgets/main_drawer.dart';
+import '../widgets/chat_dialogs.dart'; // ★ これを追加
+
+//import 'diary_list_page.dart';
+//import 'memories_card_view.dart';
+//import 'package:url_launcher/url_launcher.dart';
+//import 'album_view.dart'; // ★ これを追加
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -184,7 +189,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return _buildSplashScreen();
+      return const CommonSplashScreen(); // ★ これだけでOK！
     }
 
     if (_replyService.isFirstLaunch) {
@@ -226,11 +231,23 @@ class _ChatPageState extends State<ChatPage> {
         },
       ),
     );
-
     return Scaffold(
       extendBodyBehindAppBar: true,
-      endDrawer: _buildDrawer(lang),
+      endDrawer: MainDrawer(
+        replyService: _replyService,
+        onBgChanged: () => setState(() {}),
+        // ChatDialogs を使うように変更
+        onShowPrecautions: () => ChatDialogs.showPrecautions(context, lang),
+        onShowPwaGuide: () => ChatDialogs.showPwaGuide(context, lang),
+        onShowResetDialog: () => ChatDialogs.showTalkResetDialog(
+          context,
+          lang,
+          _replyService,
+          () => setState(() => _messages.clear()),
+        ),
+      ),
       appBar: _buildAppBar(),
+      // ...
       body: IndexedStack(
         index: _currentTab,
         children: [
@@ -328,487 +345,6 @@ class _ChatPageState extends State<ChatPage> {
           label: T.get('tab_mypage', lang),
         ),
       ],
-    );
-  }
-
-  Widget _buildDrawer(String lang) {
-    final charKey = _replyService.charKey;
-
-    return Drawer(
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(right: Radius.circular(40)),
-      ),
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFF0F5), Colors.white],
-          ),
-        ),
-        child: Column(
-          children: [
-            // ヘッダー部分は以前と同様
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.transparent),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.pink[50],
-                      backgroundImage: AssetImage(
-                        "assets/images/${charKey}_icon.png",
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    T
-                        .get('nest_toolbox', lang)
-                        .replaceAll('{name}', _replyService.displayName),
-                    style: const TextStyle(
-                      color: Colors.pinkAccent,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: ListView(
-                  children: [
-                    _buildDrawerItem(
-                      Icons.photo_library_rounded,
-                      T.get('album', lang),
-                      Colors.pinkAccent,
-                      () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (c) => AlbumView(
-                              replyService: _replyService,
-                              onBgChanged: () => setState(() {}),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDrawerItem(
-                      Icons.menu_book_rounded,
-                      T.get('diary', lang),
-                      Colors.orangeAccent,
-                      () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (c) => DiaryListPage(
-                              diaries: _replyService.getDiaries(),
-                              replyService: _replyService,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(color: Colors.pinkAccent, thickness: 0.1),
-                    ),
-
-                    // ★ ご利用時の注意事項
-                    _buildDrawerItem(
-                      Icons.info_outline_rounded,
-                      lang == 'ja' ? "ご利用時の注意事項" : "Precautions",
-                      Colors.blueGrey,
-                      () {
-                        Navigator.pop(context);
-                        _showPrecautions(lang);
-                      },
-                    ),
-
-                    _buildDrawerItem(
-                      Icons.install_mobile_rounded,
-                      lang == 'ja' ? "アプリとしてインストール" : "Install App",
-                      Colors.blueAccent,
-                      () => _showPwaGuide(lang),
-                    ),
-                    _buildDrawerItem(
-                      Icons.feedback_rounded,
-                      lang == 'ja' ? "ご意見・バグ報告" : "Feedback",
-                      Colors.tealAccent,
-                      () async {
-                        Navigator.pop(context);
-                        // ★ GoogleフォームのURL（ご自身のURLに書き換えてください）
-                        const url =
-                            "https://docs.google.com/forms/d/e/1FAIpQLSemVkpoQhlTJOGK6HIc6ljjavGWSy9K6idlscnNVzutUuWf5g/viewform?pli=1";
-                        if (await canLaunchUrl(Uri.parse(url))) {
-                          await launchUrl(Uri.parse(url));
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 下部のリセットセクション
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showTalkResetDialog();
-                    },
-                    icon: const Icon(
-                      Icons.history_rounded,
-                      size: 18,
-                      color: Colors.grey,
-                    ),
-                    label: Text(
-                      T.get('history_reset', lang),
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  ),
-                  // ★ 補足説明の追加
-                  Text(
-                    lang == 'ja'
-                        ? "会話履歴のみ消去します。"
-                        : "Conversation history only.",
-                    style: const TextStyle(color: Colors.black26, fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-
-            // クレジット表記
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24.0, top: 12),
-              child: Column(
-                children: [
-                  const Divider(indent: 50, endIndent: 50, thickness: 0.5),
-                  const SizedBox(height: 12),
-                  Text(
-                    "Project NEST Ver ${_replyService.appVersion}",
-                    style: const TextStyle(
-                      color: Colors.black26,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // ★ 配色を pinkAccent に変更
-                  Text(
-                    "Developed by Chiku",
-                    style: TextStyle(
-                      color: Colors.pinkAccent.withValues(alpha: 0.8),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const Text(
-                    "©2026 Chiku",
-                    style: TextStyle(color: Colors.black26, fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPrecautions(String lang) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: Text(
-          lang == 'ja' ? "ご利用時の注意事項" : "Usage Precautions",
-          style: const TextStyle(
-            color: Colors.blueGrey,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPrecautionSection(
-                  lang == 'ja' ? "【データの保存について】" : "[Data Storage]",
-                  lang == 'ja'
-                      ? "会話履歴や設定はブラウザのローカルストレージにのみ保存されます。ブラウザのキャッシュを削除するとデータも消えるので注意してね。"
-                      : "Data is stored only in your browser. Clearing cache will delete your data.",
-                ),
-                _buildPrecautionSection(
-                  lang == 'ja' ? "【APIキーの管理について】" : "[API Key Management]",
-                  lang == 'ja'
-                      ? "APIキーはあなたのブラウザ内でのみ使用され、外部サーバーに送信されることはありません。自己責任での管理をお願いします。"
-                      : "Your API key is used only within the browser. Please manage it at your own risk.",
-                ),
-                _buildPrecautionSection(
-                  lang == 'ja' ? "【免責事項】" : "[Disclaimers]",
-                  lang == 'ja'
-                      ? "AIの回答は必ずしも正確ではありません。NESTとの会話によって生じた不利益について、開発者は一切の責任を負いかねます。"
-                      : "AI responses may not be accurate. The developer is not responsible for any issues arising from use.",
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(lang == 'ja' ? "了解" : "OK"), // ★ ここを修正
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrecautionSection(String title, String body) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: Colors.pinkAccent,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(body, style: const TextStyle(fontSize: 13, height: 1.5)),
-        ],
-      ),
-    );
-  }
-
-  // Drawer用の共通パーツ
-  Widget _buildDrawerItem(
-    IconData icon,
-    String title,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-      ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        size: 16,
-        color: Colors.black26,
-      ),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    );
-  }
-
-  void _showPwaGuide(String lang) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: Text(
-          lang == 'ja' ? "アプリとしてインストール" : "Install App",
-          style: const TextStyle(
-            color: Colors.pinkAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStepRow(
-              "iPhone (Safari)",
-              lang == 'ja'
-                  ? "共有ボタンから「ホーム画面に追加」をタップしてね！"
-                  : "Tap 'Share' and then 'Add to Home Screen'",
-            ),
-            const SizedBox(height: 12),
-            _buildStepRow(
-              "Android (Chrome)",
-              lang == 'ja'
-                  ? "メニューから「アプリをインストール」をタップしてね！"
-                  : "Tap 'Menu' and then 'Install App'",
-            ),
-            const SizedBox(height: 20),
-            Text(
-              lang == 'ja'
-                  ? "※ホーム画面からいつでもNESTに会えるようになります ❤️"
-                  : "Meet NEST anytime from your home screen! ❤️",
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.pinkAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-  // lib/views/chat_page.dart のクラス内に追加
-
-  Widget _buildSplashScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // --- 枠付きの丸いアイコン ---
-            Container(
-              padding: const EdgeInsets.all(4), // 枠と画像の間の隙間（これが枠線になります）
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.pinkAccent.withValues(alpha: 0.3), // 枠の色
-              ),
-              child: CircleAvatar(
-                radius: 60, // アイコンのサイズ
-                backgroundColor: Colors.white, // 画像がない時の背景
-                // backgroundImage で画像を指定
-                backgroundImage: const AssetImage('assets/images/hau_icon.png'),
-                // 画像が読み込めない、あるいはパスが間違っている時に表示される子要素
-                child: Image.asset(
-                  'assets/images/hau_icon.png',
-                  errorBuilder: (context, error, stackTrace) {
-                    // ここに画像が読み込めなかった時のアイコンを置く
-                    return const Icon(
-                      Icons.favorite,
-                      size: 60,
-                      color: Colors.pinkAccent,
-                    );
-                  },
-                  // 画像がある場合は透明にして、backgroundImage を見せる
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
-
-            // ---------------------------
-            const SizedBox(height: 32),
-            const Text(
-              'Project NEST',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
-                letterSpacing: 2.0,
-              ),
-            ),
-            const SizedBox(height: 48),
-            SizedBox(
-              width: 120,
-              height: 3,
-              child: LinearProgressIndicator(
-                borderRadius: BorderRadius.circular(10),
-                color: Colors.pinkAccent.withValues(alpha: 0.6),
-                backgroundColor: Colors.white.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStepRow(String os, String msg) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          os,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        Text(msg, style: const TextStyle(fontSize: 13, color: Colors.black87)),
-      ],
-    );
-  }
-
-  void _showTalkResetDialog() {
-    final lang = _replyService.language;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: Text(T.get('reset_talk', lang)),
-        // ★ 警告メッセージを詳細化
-        content: Text(
-          lang == 'ja'
-              ? "今まで積み上げてきた思い出（会話履歴）を消去するよ。\n\n⚠️ この操作は二度と戻せないけど、本当にいい？"
-              : "Are you sure you want to delete your conversation history?\n\n⚠️ This operation cannot be undone.",
-          style: const TextStyle(height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              T.get('cancel', lang),
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              await _replyService.clearChatOnly();
-              if (!mounted) return;
-              setState(() => _messages.clear());
-              Navigator.pop(context);
-              // 完了通知
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    lang == 'ja' ? "思い出をリセットしました。" : "History has been reset.",
-                  ),
-                ),
-              );
-            },
-            child: Text(
-              T.get('reset_btn', lang),
-              style: const TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

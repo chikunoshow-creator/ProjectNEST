@@ -8,7 +8,7 @@ import 'ai_service.dart';
 
 class ReplyService {
   final AiService _aiService = AiService();
-  final String appVersion = "1.13";
+  final String appVersion = "1.15";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -26,6 +26,7 @@ class ReplyService {
   int intimacyScore = 0;
   String selectedBg = "default";
   bool isFirstLaunch = true;
+  String startDate = "";
 
   Map<String, dynamic>? _personalityData;
   final Map<String, String> personalityNames = {
@@ -62,6 +63,18 @@ class ReplyService {
   String get displayUserName {
     if (language == 'en' && userName == "あなた") return "Guest";
     return userName;
+  }
+
+  int get daysTogether {
+    if (startDate.isEmpty) return 1;
+    try {
+      final start = DateTime.parse(startDate);
+      final now = DateTime.now();
+      // 開始日を1日目としてカウント
+      return now.difference(start).inDays + 1;
+    } catch (e) {
+      return 1;
+    }
   }
 
   // lib/services/reply_service.dart 内
@@ -111,6 +124,7 @@ class ReplyService {
     intimacyScore = prefs.getInt(AppConstants.intimacyKey) ?? 0;
     selectedBg = prefs.getString(AppConstants.bgKey) ?? "default";
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
+    startDate = prefs.getString(AppConstants.startDateKey) ?? "";
 
     final String? savedHistory = prefs.getString(AppConstants.historyKey);
     if (savedHistory != null) {
@@ -362,10 +376,14 @@ class ReplyService {
 
   Future<void> completeSetup() async {
     isFirstLaunch = false;
-    (await SharedPreferences.getInstance()).setBool(
-      AppConstants.firstLaunchKey,
-      false,
-    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.firstLaunchKey, false);
+
+    // ★追加：初めてセットアップした日を記念日として保存
+    if (startDate.isEmpty) {
+      startDate = DateTime.now().toIso8601String();
+      await prefs.setString(AppConstants.startDateKey, startDate);
+    }
   }
 
   // --- アルバム・背景管理 (AlbumView用) ---
@@ -445,6 +463,7 @@ class ReplyService {
       'language': language,
       'history': _history,
       'diaries': _diaries.map((e) => e.toJson()).toList(),
+      'startDate': startDate, // ★追加
       'backupVersion': appVersion,
     };
   }
@@ -473,6 +492,7 @@ class ReplyService {
     _diaries = (data['diaries'] as List)
         .map((e) => DiaryEntry.fromJson(e))
         .toList();
+    startDate = data['startDate'] ?? ""; // ★追加
 
     // SharedPreferences への永続化
     await prefs.setString(AppConstants.userKey, userName);
