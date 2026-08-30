@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -48,21 +50,61 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _initApp() async {
-    // 1. 開始時間を記録
     DateTime startTime = DateTime.now();
 
     await _replyService.loadHistory();
     await _loadMessages();
     await _speechToText.initialize();
+
+    // ★ 追加：アップデートチェック
+    await _checkUpdate(isManual: false);
+
     await _checkAutoDiary();
 
-    // 2. 最低でも 1.5秒はロゴを見せる
     int elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    if (elapsed < 1500) {
+    if (elapsed < 1500)
       await Future.delayed(Duration(milliseconds: 1500 - elapsed));
-    }
-
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  // アップデートをチェックする機能
+  Future<void> _checkUpdate({required bool isManual}) async {
+    final config = await _replyService.aiService.fetchMaintenanceConfig();
+    final String latest = config['latest_version'] ?? _replyService.appVersion;
+
+    if (latest != _replyService.appVersion) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
+          ),
+          title: const Text("Update Available"),
+          content: Text("Ver $latest が届いています。最新版に更新するね？"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("あとで"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // 強制リロード
+                _replyService.resetApp(); // キャッシュをクリアするための念押し
+                // Web用の強制リロード（エラーが出る場合は後述のインポートを追加）
+                html.window.location.reload();
+              },
+              child: const Text("更新する"),
+            ),
+          ],
+        ),
+      );
+    } else if (isManual) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("最新バージョンだよ！ ❤️")));
+    }
   }
 
   // --- メッセージ・データの管理 ---
@@ -294,6 +336,7 @@ class _ChatPageState extends State<ChatPage> {
             }),
             onSettingsUpdated: () => setState(() {}),
             onShowAlbum: () {},
+            onCheckUpdate: () => _checkUpdate(isManual: true), // ★この1行を追加
           ),
         ],
       ),

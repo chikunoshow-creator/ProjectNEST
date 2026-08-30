@@ -43,18 +43,37 @@ class AiService {
     }
   }
 
+  // メンテナンス＆最新バージョン情報の取得
+  Future<Map<String, dynamic>> fetchMaintenanceConfig() async {
+    try {
+      // キャッシュを避けるためにタイムスタンプを付与して maintenance.json を取得
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final response = await http.get(Uri.parse('maintenance.json?v=$ts'));
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+    } catch (e) {
+      print("Update check error: $e");
+    }
+    return {"enabled": false, "latest_version": "1.151"};
+  }
+
   // 日記生成用
-  // lib/services/ai_service.dart 内の実装
   Future<Map<String, String>> generateDiaryContent({
     required String apiKey,
     required String personality,
+    required String nestName, // ★追加：NESTの名前
+    required String userName, // ★追加：ユーザーの名前
     required String historyText,
     required String language,
   }) async {
-    // 命令文を T.get で取得
+    // 命令文を T.get で取得し、{nestName} と {userName} を実際の名前に置き換える
     final String systemPrompt = T
         .get('diary_ai_system_prompt', language)
-        .replaceAll('{personality}', personality);
+        .replaceAll('{personality}', personality)
+        .replaceAll('{nestName}', nestName) // ★ここでお前の名前は◯◯だと教える
+        .replaceAll('{userName}', userName); // ★相手の名前は◯◯だと教える
+
     final String userPrefix = T.get('diary_ai_user_prefix', language);
 
     // フォールバック用の値も T.get で準備
@@ -85,7 +104,6 @@ class AiService {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         String rawJson = data['choices'][0]['message']['content'];
 
-        // JSON抽出ロジック（ハルシネーション対策）
         final start = rawJson.indexOf('{');
         final end = rawJson.lastIndexOf('}');
         if (start != -1 && end != -1) {
@@ -103,7 +121,6 @@ class AiService {
       print("Diary AI Error: $e");
     }
 
-    // 全てのエラーケースで T.get から取得したフォールバックを返す
     return fallback;
   }
 

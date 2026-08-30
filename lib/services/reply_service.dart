@@ -9,7 +9,8 @@ import 'translation_service.dart'; // ★追加
 
 class ReplyService {
   final AiService _aiService = AiService();
-  final String appVersion = "1.151";
+  AiService get aiService => _aiService;
+  final String appVersion = "1.152";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -170,13 +171,15 @@ class ReplyService {
     // 記憶を注入して日記生成
     String memoryNote = "【あなたが気づいたパートナーのこと】\n${_userMemories.join('、')}\n\n";
 
+    // lib/services/reply_service.dart 内の generateDiary メソッドの一部
     final Map<String, String> diaryData = await _aiService.generateDiaryContent(
       apiKey: groqApiKey,
       personality: personality,
+      nestName: nestName, // ★追加
+      userName: userName, // ★追加
       historyText: memoryNote + historyText,
       language: language,
     );
-
     return DiaryEntry(
       date: nestToday,
       title: diaryData['title'] ?? (language == 'en' ? "Today" : "今日の日記"),

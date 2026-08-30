@@ -14,6 +14,7 @@ class MyPageView extends StatelessWidget {
   final VoidCallback onResetAll;
   final VoidCallback onSettingsUpdated;
   final VoidCallback onShowAlbum;
+  final VoidCallback onCheckUpdate; // ★この1行を追加！
 
   const MyPageView({
     super.key,
@@ -21,6 +22,7 @@ class MyPageView extends StatelessWidget {
     required this.onResetAll,
     required this.onSettingsUpdated,
     required this.onShowAlbum,
+    required this.onCheckUpdate, // ★ここにも追加！
   });
 
   @override
@@ -116,7 +118,38 @@ class MyPageView extends StatelessWidget {
               ),
             ]),
           ),
-
+          // MyPageViewのSliverListの中、または末尾に追加
+          _buildSectionHeader(lang == 'ja' ? "アプリ情報" : "App Info"),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.info_outline,
+                    color: Colors.blueAccent,
+                  ),
+                  title: const Text(
+                    "Version",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text("Ver ${replyService.appVersion}"),
+                  trailing: TextButton(
+                    onPressed: () {
+                      // ChatPageのメソッドを呼ぶか、直接同様のロジックを実行
+                      // ここでは簡易的に「更新チェック」をトリガー
+                      onCheckUpdate();
+                    },
+                    child: Text(T.get('version_check_btn', lang)),
+                  ),
+                ),
+              ),
+            ),
+          ),
           // 危険な操作セクション
           _buildSectionHeader(lang == 'ja' ? "重要な操作" : "Critical Actions"),
 
