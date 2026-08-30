@@ -9,7 +9,7 @@ import 'translation_service.dart'; // ★追加
 
 class ReplyService {
   final AiService _aiService = AiService();
-  final String appVersion = "1.15";
+  final String appVersion = "1.151";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
