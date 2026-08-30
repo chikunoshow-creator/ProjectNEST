@@ -12,7 +12,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService(); // ★追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.153";
+  final String appVersion = "1.154";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -50,7 +50,18 @@ class ReplyService {
     String deviceLang = PlatformDispatcher.instance.locale.languageCode;
     language = (deviceLang == 'ja') ? 'ja' : 'en';
   }
+  // 親密度ランクの判定
+  String get intimacyRank {
+    if (intimacyScore >= 1000) return "S";
+    if (intimacyScore >= 500) return "A";
+    if (intimacyScore >= 200) return "B";
+    if (intimacyScore >= 100) return "C";
+    if (intimacyScore >= 50) return "D";
+    return "E";
+  }
 
+  // 累計メッセージ数（現在の履歴ベース）
+  int get messageCount => _history.where((m) => m['role'] == 'user').length;
   // --- Getters ---
   List<Map<String, String>> getHistory() => _history;
   List<DiaryEntry> getDiaries() => _diaries;

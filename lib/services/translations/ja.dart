@@ -267,4 +267,7 @@ const Map<String, String> ja = {
   'error_sweet': 'うーん…それはちょっと、難しいかも…ごめんね？(>_<)',
   'error_cool': 'その質問にはどう答えたらいいか困っちゃうな。他のお話にしない？',
   'error_tsun': 'はぁ！？あんた何言ってるのよ！変なこと聞かないでよねっ！',
+  'card_rank': '親密度ランク',
+  'card_messages': '累計メッセージ数',
+  'card_since': '共同生活開始日',
 };

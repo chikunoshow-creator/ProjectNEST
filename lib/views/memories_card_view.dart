@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart'; // 日付フォーマット用
 import '../../services/reply_service.dart';
 import '../../services/translation_service.dart';
 
@@ -17,7 +18,6 @@ class MemoriesCardView extends StatefulWidget {
 class _MemoriesCardViewState extends State<MemoriesCardView> {
   final GlobalKey _cardKey = GlobalKey();
 
-  // --- 共通：共有用テキストの作成 ---
   String _getShareText(String lang) {
     return T
         .get('card_share_template', lang)
@@ -25,16 +25,13 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         .replaceAll('{days}', widget.replyService.daysTogether.toString());
   }
 
-  // --- 1. 画像のキャプチャとダウンロード処理 ---
   Future<void> _captureAndSave(
     BuildContext context,
     String lang, {
     bool isSharing = false,
   }) async {
     try {
-      // 描画を確実にするため一瞬待つ
       await Future.delayed(const Duration(milliseconds: 100));
-
       RenderRepaintBoundary? boundary =
           _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
@@ -48,11 +45,12 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
 
       final blob = html.Blob([pngBytes]);
       final url = html.Url.createObjectUrlFromBlob(blob);
-
       html.AnchorElement(href: url)
-        ..setAttribute("download", "NEST_Memories_Card.png")
+        ..setAttribute(
+          "download",
+          "NEST_Certificate_${widget.replyService.displayName}.png",
+        )
         ..click();
-
       html.Url.revokeObjectUrl(url);
 
       if (mounted) {
@@ -74,21 +72,15 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
     }
   }
 
-  // --- 2. 画像保存 ＋ SNSシェア ---
   Future<void> _captureAndShareSns(
     String platform,
     String lang,
     BuildContext context,
   ) async {
-    // まず画像を保存
     await _captureAndSave(context, lang, isSharing: true);
-
-    // ダウンロードとSNS起動が重ならないよう少し待機
     await Future.delayed(const Duration(milliseconds: 500));
-
     final text = _getShareText(lang);
     String url = "";
-
     switch (platform) {
       case 'x':
         url =
@@ -102,18 +94,14 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         break;
       case 'discord':
         Clipboard.setData(ClipboardData(text: text));
-        if (mounted) {
+        if (mounted)
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(T.get('share_discord_done', lang))),
           );
-        }
         url = "https://discord.com/channels/@me";
         break;
     }
-
-    if (url.isNotEmpty) {
-      html.window.open(url, "_blank");
-    }
+    if (url.isNotEmpty) html.window.open(url, "_blank");
   }
 
   @override
@@ -143,86 +131,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
               ),
             ),
             const SizedBox(height: 40),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  Text(
-                    T.get('card_share_hint', lang),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black45,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 3.2,
-                    children: [
-                      _buildSnsButton(
-                        Icons.close,
-                        T.get('share_x', lang),
-                        Colors.black,
-                        () => _captureAndShareSns('x', lang, context),
-                      ),
-                      _buildSnsButton(
-                        Icons.chat_bubble,
-                        T.get('share_line', lang),
-                        const Color(0xFF06C755),
-                        () => _captureAndShareSns('line', lang, context),
-                      ),
-                      _buildSnsButton(
-                        Icons.phone_android,
-                        T.get('share_whatsapp', lang),
-                        const Color(0xFF25D366),
-                        () => _captureAndShareSns('whatsapp', lang, context),
-                      ),
-                      _buildSnsButton(
-                        Icons.discord,
-                        T.get('share_discord', lang),
-                        const Color(0xFF5865F2),
-                        () => _captureAndShareSns('discord', lang, context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 40),
-                  const Divider(),
-                  const SizedBox(height: 20),
-                  TextButton.icon(
-                    onPressed: () => _captureAndSave(context, lang),
-                    icon: const Icon(
-                      Icons.download_rounded,
-                      color: Colors.pinkAccent,
-                      size: 20,
-                    ),
-                    label: Text(
-                      T.get('share_save_btn', lang),
-                      style: const TextStyle(
-                        color: Colors.pinkAccent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        side: BorderSide(
-                          color: Colors.pinkAccent.withValues(alpha: 0.2),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildActionButtons(lang, context),
           ],
         ),
       ),
@@ -231,111 +140,207 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
 
   // --- カードのデザイン本体 ---
   Widget _buildCardUI(String lang, String charKey) {
+    final rank = widget.replyService.intimacyRank;
+    final isRankS = (rank == "S");
+
+    // 記念日のフォーマット
+    String sinceDate = "2024.01.01";
+    if (widget.replyService.startDate.isNotEmpty) {
+      try {
+        sinceDate = DateFormat(
+          'yyyy.MM.dd',
+        ).format(DateTime.parse(widget.replyService.startDate));
+      } catch (e) {
+        sinceDate = "2024.01.01";
+      }
+    }
+
     return Container(
       width: 380,
       height: 220,
       decoration: BoxDecoration(
+        // ★ 修正：stops を削除して自動計算に任せることで、色が2色でも3色でも正しく表示されます
         gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Colors.pinkAccent.withValues(alpha: 0.15), Colors.white],
-          stops: const [0.0, 0.6],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isRankS
+              ? [
+                  const Color(0xFFFFD700).withValues(alpha: 0.2),
+                  Colors.white,
+                  const Color(0xFFDAA520).withValues(alpha: 0.1),
+                ]
+              : [Colors.pinkAccent.withValues(alpha: 0.15), Colors.white],
         ),
         borderRadius: BorderRadius.circular(25),
+        border: Border.all(
+          color: isRankS
+              ? const Color(0xFFFFD700).withValues(alpha: 0.5)
+              : Colors.white,
+          width: isRankS ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.pinkAccent.withValues(alpha: 0.08),
-            blurRadius: 20,
+            color: (isRankS ? const Color(0xFFFFD700) : Colors.pinkAccent)
+                .withValues(alpha: 0.1),
+            blurRadius: 25,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            flex: 4,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 5),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 45,
-                    backgroundImage: AssetImage(
-                      "assets/images/${charKey}_icon.png",
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.replyService.displayName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pinkAccent,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
+          // 背景の大きなハート装飾
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Icon(
+              Icons.favorite,
+              size: 150,
+              color: Colors.pinkAccent.withValues(alpha: 0.03),
             ),
           ),
-          Expanded(
-            flex: 6,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _infoRow(
-                    T.get('card_days_together', lang),
-                    "${widget.replyService.daysTogether}${T.get('card_days_unit', lang)}",
-                    Icons.calendar_today_rounded,
-                  ),
-                  const SizedBox(height: 18),
-                  _infoRow(
-                    T.get('card_intimacy', lang),
-                    "❤️ ${widget.replyService.intimacyScore}",
-                    Icons.favorite_rounded,
-                  ),
-                  const Spacer(),
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+          // メインコンテンツ
+          Row(
+            children: [
+              // 左側：アイコンとランク
+              Expanded(
+                flex: 4,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // --- アイコンとランクバッジのスタック ---
+                    Stack(
+                      clipBehavior: Clip.none, // 枠線からはみ出すのを許可する
                       children: [
-                        const Text(
-                          "Project NEST - Official Partner",
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.black12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black12, blurRadius: 5),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 42,
+                            backgroundColor: Colors.grey[100],
+                            backgroundImage: AssetImage(
+                              "assets/images/${charKey}_icon.png",
+                            ),
                           ),
                         ),
-                        Text(
-                          "Issued by Chiku",
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.pinkAccent.withValues(alpha: 0.25),
-                            fontWeight: FontWeight.bold,
-                          ),
+                        // ★ Positioned を使って位置を微調整
+                        Positioned(
+                          right: -8, // 少し右側にはみ出させる
+                          bottom: 0, // 下端に合わせる
+                          child: _buildRankBadge(rank),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.replyService.displayName,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isRankS
+                            ? const Color(0xFFB8860B)
+                            : Colors.pinkAccent,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              // 右側：ステータス
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _infoRow(
+                        T.get('card_days_together', lang),
+                        "${widget.replyService.daysTogether} ${T.get('card_days_unit', lang)}",
+                        Icons.calendar_today_rounded,
+                      ),
+                      const SizedBox(height: 12),
+                      _infoRow(
+                        T.get('card_intimacy', lang),
+                        "❤️ ${widget.replyService.intimacyScore}",
+                        Icons.favorite_rounded,
+                      ),
+                      const SizedBox(height: 12),
+                      _infoRow(
+                        T.get('card_messages', lang),
+                        "${widget.replyService.messageCount} msg",
+                        Icons.chat_bubble_outline_rounded,
+                      ),
+                      const Spacer(),
+                      // 記念日
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              T.get('card_since', lang),
+                              style: const TextStyle(
+                                fontSize: 7,
+                                color: Colors.black26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              sinceDate,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black45,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRankBadge(String rank) {
+    Color badgeColor = Colors.grey;
+    if (rank == "S")
+      badgeColor = const Color(0xFFFFD700);
+    else if (rank == "A")
+      badgeColor = const Color(0xFFFF4500);
+    else if (rank == "B")
+      badgeColor = Colors.purple;
+    else if (rank == "C")
+      badgeColor = Colors.blue;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // 少しスリムに
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(8), // 角丸を少しシャープに
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+      ),
+      child: Text(
+        "Rank $rank",
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9, // 1px小さく
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -351,26 +356,103 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
             Text(
               label,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 9,
                 color: Colors.black38,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
         Padding(
           padding: const EdgeInsets.only(left: 14),
           child: Text(
             value,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButtons(String lang, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          Text(
+            T.get('card_share_hint', lang),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black45,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 3.2,
+            children: [
+              _buildSnsButton(
+                Icons.close,
+                T.get('share_x', lang),
+                Colors.black,
+                () => _captureAndShareSns('x', lang, context),
+              ),
+              _buildSnsButton(
+                Icons.chat_bubble,
+                T.get('share_line', lang),
+                const Color(0xFF06C755),
+                () => _captureAndShareSns('line', lang, context),
+              ),
+              _buildSnsButton(
+                Icons.phone_android,
+                T.get('share_whatsapp', lang),
+                const Color(0xFF25D366),
+                () => _captureAndShareSns('whatsapp', lang, context),
+              ),
+              _buildSnsButton(
+                Icons.discord,
+                T.get('share_discord', lang),
+                const Color(0xFF5865F2),
+                () => _captureAndShareSns('discord', lang, context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 30),
+          TextButton.icon(
+            onPressed: () => _captureAndSave(context, lang),
+            icon: const Icon(
+              Icons.download_rounded,
+              color: Colors.pinkAccent,
+              size: 20,
+            ),
+            label: Text(
+              T.get('share_save_btn', lang),
+              style: const TextStyle(
+                color: Colors.pinkAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+                side: BorderSide(
+                  color: Colors.pinkAccent.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

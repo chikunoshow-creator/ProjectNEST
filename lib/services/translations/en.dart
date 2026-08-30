@@ -287,4 +287,7 @@ const Map<String, String> en = {
   'error_cool':
       "I'm not quite sure how to respond. Let's talk about something else.",
   'error_tsun': "Hah?! I don't know what you're talking about! Don't tease me!",
+  'card_rank': 'Intimacy Rank',
+  'card_messages': 'Total Messages',
+  'card_since': 'Anniversary',
 };
