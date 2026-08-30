@@ -26,7 +26,6 @@ class _AiSystemViewState extends State<AiSystemView> {
     super.initState();
     _tempLang = widget.replyService.language;
     _groqKeyCtrl = TextEditingController(text: widget.replyService.groqApiKey);
-    // Gemini用コントローラーは削除
   }
 
   @override
@@ -37,8 +36,12 @@ class _AiSystemViewState extends State<AiSystemView> {
 
   @override
   Widget build(BuildContext context) {
+    // テーマ色の取得
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('ai_setting', _tempLang),
@@ -46,7 +49,7 @@ class _AiSystemViewState extends State<AiSystemView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // 文字色を連動
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -55,6 +58,7 @@ class _AiSystemViewState extends State<AiSystemView> {
             _tempLang == 'ja'
                 ? "APIキーはあなたのブラウザ内にのみ保存され、開発者にも送信されません。安心して設定してね。"
                 : "Your API key is saved only in your browser and is never sent to the developer.",
+            themeColor,
           ),
           const SizedBox(height: 24),
 
@@ -63,9 +67,9 @@ class _AiSystemViewState extends State<AiSystemView> {
           _buildCard(
             child: DropdownButtonFormField<String>(
               value: _tempLang,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: InputBorder.none,
-                prefixIcon: Icon(Icons.language, color: Colors.pinkAccent),
+                prefixIcon: Icon(Icons.language, color: themeColor), // アイコン色を連動
               ),
               items: const [
                 DropdownMenuItem(value: "ja", child: Text("日本語")),
@@ -76,12 +80,12 @@ class _AiSystemViewState extends State<AiSystemView> {
           ),
           const SizedBox(height: 24),
 
-          // 2. AIエンジン（表示のみ、または一本化された説明）
+          // 2. AIエンジン（表示のみ）
           _buildSectionTitle(_tempLang == 'ja' ? "AIエンジン" : "AI Provider"),
           _buildCard(
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.psychology, color: Colors.pinkAccent),
+              leading: Icon(Icons.psychology, color: themeColor), // アイコン色を連動
               title: const Text("Groq (Recommended)"),
               subtitle: Text(
                 _tempLang == 'ja'
@@ -102,14 +106,14 @@ class _AiSystemViewState extends State<AiSystemView> {
               decoration: InputDecoration(
                 hintText: "gsk_...",
                 border: InputBorder.none,
-                prefixIcon: const Icon(
+                prefixIcon: Icon(
                   Icons.vpn_key_rounded,
-                  color: Colors.pinkAccent,
+                  color: themeColor, // アイコン色を連動
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.help_outline_rounded,
-                    color: Colors.pinkAccent,
+                    color: themeColor, // アイコン色を連動
                   ),
                   onPressed: () => GroqGuide.show(context, _tempLang),
                 ),
@@ -117,13 +121,12 @@ class _AiSystemViewState extends State<AiSystemView> {
             ),
           ),
 
-          // Gemini用の入力欄(if文ごと)を削除
           const SizedBox(height: 48),
 
           ElevatedButton(
             onPressed: _saveSettings,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
+              backgroundColor: themeColor, // ボタンの色を連動
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
@@ -172,18 +175,18 @@ class _AiSystemViewState extends State<AiSystemView> {
     );
   }
 
-  Widget _buildInfoText(String text) {
+  Widget _buildInfoText(String text, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.pinkAccent.withValues(alpha: 0.05),
+        color: themeColor.withValues(alpha: 0.05), // 背景色を連動
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.security_rounded,
-            color: Colors.pinkAccent,
+            color: themeColor, // アイコン色を連動
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -203,10 +206,8 @@ class _AiSystemViewState extends State<AiSystemView> {
   }
 
   Future<void> _saveSettings() async {
-    // 言語設定を保存
     await widget.replyService.setLanguage(_tempLang);
 
-    // ★ updateSettingsの呼び出しを修正（provider, geminiKeyを削除）
     await widget.replyService.updateSettings(
       name: widget.replyService.userName,
       nestName: widget.replyService.nestName,
@@ -226,6 +227,7 @@ class _AiSystemViewState extends State<AiSystemView> {
           content: Text(
             _tempLang == 'ja' ? "システム設定を保存したよ！" : "Settings Saved!",
           ),
+          backgroundColor: widget.replyService.themeColor, // 通知の色を連動
           behavior: SnackBarBehavior.floating,
         ),
       );

@@ -7,12 +7,13 @@ import '../models/diary_entry.dart';
 import 'ai_service.dart';
 import 'translation_service.dart'; // ★追加
 import 'reply_storage_service.dart'; // ★この1行を追加してください！
+import 'package:flutter/material.dart'; // ★これがないと Colors でエラーが出ます
 
 class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService(); // ★追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.154";
+  final String appVersion = "1.155";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -30,6 +31,7 @@ class ReplyService {
   String selectedBg = "default";
   bool isFirstLaunch = true;
   String startDate = "";
+  String selectedTheme = "pink"; // デフォルトはピンク
 
   // 記憶保持用
   List<String> _userMemories = [];
@@ -154,8 +156,26 @@ class ReplyService {
           .map((e) => DiaryEntry.fromJson(e))
           .toList();
     }
+    selectedTheme = prefs.getString(AppConstants.themeKey) ?? "pink";
     await _loadPersonalityJson();
   }
+
+  // lib/services/reply_service.dart 内
+
+  Color get themeColor {
+    if (selectedTheme == "blue") {
+      // lightBlueAccent よりも少し深みのある blueAccent に変更
+      return Colors.blueAccent;
+    }
+    return Colors.pinkAccent;
+  }
+
+  // 背景やカードのうっすらした色
+  Color get themeSubColor => themeColor.withValues(alpha: 0.05);
+  // 背景用の超薄い色（0xFFFFF5F5 の代わり）
+  Color get scaffoldBg => themeColor.withValues(alpha: 0.05);
+  // カードや項目の背景用の少し薄い色
+  Color get itemBg => themeColor.withValues(alpha: 0.1);
 
   // ★ 正しい位置（クラスの直下）に generateDiary を配置
   Future<DiaryEntry> generateDiary() async {
@@ -201,6 +221,12 @@ class ReplyService {
           diaryData['content'] ??
           (language == 'en' ? "Happy day! ❤️" : "幸せな一日だったよ❤️"),
     );
+  }
+
+  Future<void> setTheme(String themeName) async {
+    selectedTheme = themeName;
+    final prefs = await (await SharedPreferences.getInstance());
+    await prefs.setString(AppConstants.themeKey, themeName);
   }
 
   Future<void> _loadPersonalityJson() async {
@@ -273,7 +299,7 @@ class ReplyService {
   Future<String> createReply(String msg) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. 性格Roleの決定 (T.get を使用)
+    // 1. 性格Roleの決定
     String pKey = (personality == "甘えん坊")
         ? 'role_sweet'
         : (personality == "クールなお姉さん" ? 'role_cool' : 'role_tsun');
@@ -286,10 +312,20 @@ class ReplyService {
               ? T.get('intimacy_mid', language)
               : T.get('intimacy_high', language));
 
-    // 3. プロンプト構築
+    // ★ 3. 記憶（メモリー）の注入
+    String memoryBlock = "";
+    if (_userMemories.isNotEmpty) {
+      // 記憶リストを「、」で繋いでプロンプトにはめ込む
+      memoryBlock = T
+          .get('memory_context', language)
+          .replaceAll('{memories}', _userMemories.join('、'));
+    }
+
+    // 4. システムプロンプトの構築（memoryBlockを合体）
     String systemPrompt =
         "あなたの名前は$nestName、相手は$userNameです。 "
-        "$personalityRole $intimacyInstruction ${T.get('guardrails', language)} ${T.get('format_rule', language)}";
+        "$personalityRole $intimacyInstruction $memoryBlock "
+        "${T.get('guardrails', language)} ${T.get('format_rule', language)}";
 
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
@@ -298,19 +334,17 @@ class ReplyService {
       userMessage: msg,
     );
 
-    // ★ 救出ロジック ＆ 親密度ペナルティ 部分を修正
+    // 救出ロジック ＆ 親密度ペナルティ
     if (reply == "NEST_ERROR") {
       intimacyScore = (intimacyScore > 5) ? intimacyScore - 5 : 0;
       await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
-
-      // 性格ごとのエラーメッセージを T.get で取得
       final errorKey = (personality == "甘えん坊")
           ? 'error_sweet'
           : (personality == "クールなお姉さん" ? 'error_cool' : 'error_tsun');
       return T.get(errorKey, language);
     }
 
-    // 正常な場合は親密度 +1
+    // 正常な場合は親密度アップ
     intimacyScore++;
     await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 

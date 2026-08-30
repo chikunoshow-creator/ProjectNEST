@@ -32,25 +32,25 @@ class _BackupViewState extends State<BackupView> {
     setState(() => _backupDate = date);
   }
 
-  // ★ 新しいバックアップ処理：内部上書き ＋ ファイル保存
   void _createBackup() async {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
 
-    // 1. ブラウザ内部のスロットに保存（これで「常に1つ」が実現）
     await widget.replyService.saveToInternalSlot();
-
-    // 2. ファイルとしてもダウンロード（お守り用）
     _executeFileDownload();
-
     _loadDate();
+
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(T.get('backup_success', lang))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(T.get('backup_success', lang)),
+          backgroundColor: themeColor, // 通知の色を連動
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  // 純粋にファイルをダウンロードさせる処理
   void _executeFileDownload() {
     final data = widget.replyService.exportAllData();
     final jsonString = jsonEncode(data);
@@ -59,17 +59,19 @@ class _BackupViewState extends State<BackupView> {
     final url = html.Url.createObjectUrlFromBlob(blob);
 
     html.AnchorElement(href: url)
-      ..setAttribute("download", "nest_backup.json")
+      ..setAttribute(
+        "download",
+        "nest_backup_${widget.replyService.displayName}.json",
+      )
       ..click();
 
     html.Url.revokeObjectUrl(url);
   }
 
-  // ★ 内部スロットから復元
   void _restoreFromInternal() async {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
 
-    // 1. 復元前の最終確認ダイアログ (T.get を使用)
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -100,16 +102,18 @@ class _BackupViewState extends State<BackupView> {
 
     if (confirm != true) return;
 
-    // 2. 復元処理の実行
     bool success = await widget.replyService.restoreFromInternalSlot();
-
     if (success) {
       widget.onRestored();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(T.get('restore_success', lang))));
-        Navigator.pop(context); // バックアップ画面を閉じて戻る
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(T.get('restore_success', lang)),
+            backgroundColor: themeColor, // 通知の色を連動
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context);
       }
     } else {
       if (mounted) {
@@ -120,9 +124,9 @@ class _BackupViewState extends State<BackupView> {
     }
   }
 
-  // ファイルから復元（従来通り）
   void _restoreFromFile() {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
     final uploadInput = html.FileUploadInputElement();
     uploadInput.accept = '.json';
     uploadInput.click();
@@ -139,15 +143,20 @@ class _BackupViewState extends State<BackupView> {
           widget.onRestored();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(T.get('restore_success', lang))),
+              SnackBar(
+                content: Text(T.get('restore_success', lang)),
+                backgroundColor: themeColor,
+                behavior: SnackBarBehavior.floating,
+              ),
             );
             Navigator.pop(context);
           }
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(T.get('restore_error', lang))),
             );
+          }
         }
       });
     });
@@ -156,8 +165,11 @@ class _BackupViewState extends State<BackupView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('menu_backup_title', lang),
@@ -165,12 +177,12 @@ class _BackupViewState extends State<BackupView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // 文字色を連動
       ),
       body: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
-          _buildInfoCard(lang),
+          _buildInfoCard(lang, themeColor), // カード内のアイコン色を連動
           const SizedBox(height: 32),
 
           _buildSectionTitle(lang == 'ja' ? "保存する" : "Save"),
@@ -179,12 +191,11 @@ class _BackupViewState extends State<BackupView> {
             desc: T.get('backup_create_sub', lang),
             icon: Icons.cloud_upload_rounded,
             onTap: _createBackup,
-            color: Colors.pinkAccent,
+            color: themeColor, // メインアクションをテーマ色に
           ),
 
           const SizedBox(height: 32),
           _buildSectionTitle(lang == 'ja' ? "復元する" : "Restore"),
-          // 内部スロットからの復元（普段使い用）
           _buildActionCard(
             title: lang == 'ja' ? "前回のデータから復元" : "Restore from App",
             desc: lang == 'ja'
@@ -192,10 +203,9 @@ class _BackupViewState extends State<BackupView> {
                 : "Restore from the latest internal save.",
             icon: Icons.settings_backup_restore_rounded,
             onTap: _restoreFromInternal,
-            color: Colors.blueAccent,
+            color: Colors.blueAccent, // 復元は「戻す」イメージの青系で固定（またはテーマ色）
           ),
           const SizedBox(height: 12),
-          // ファイルからの復元（機種変更・ブラウザ変更用）
           _buildActionCard(
             title: lang == 'ja' ? "ファイルを選択して復元" : "Restore from File",
             desc: lang == 'ja'
@@ -224,7 +234,7 @@ class _BackupViewState extends State<BackupView> {
     );
   }
 
-  Widget _buildInfoCard(String lang) {
+  Widget _buildInfoCard(String lang, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -239,7 +249,7 @@ class _BackupViewState extends State<BackupView> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.history_rounded, color: Colors.pinkAccent),
+          Icon(Icons.history_rounded, color: themeColor), // アイコン色を連動
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,

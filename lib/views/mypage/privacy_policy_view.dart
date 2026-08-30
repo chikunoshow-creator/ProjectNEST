@@ -10,9 +10,11 @@ class PrivacyPolicyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5), // 統一された背景色
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('menu_policy_title', lang),
@@ -20,7 +22,7 @@ class PrivacyPolicyView extends StatelessWidget {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // AppBarの文字色を連動
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -38,22 +40,26 @@ class PrivacyPolicyView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // 各セクション（共通パーツ化してスッキリ）
+            // 各セクション（テーマ色を渡して呼び出し）
             _buildPolicySection(
               T.get('policy_s1_title', lang),
               T.get('policy_s1_desc', lang),
+              themeColor,
             ),
             _buildPolicySection(
               T.get('policy_s2_title', lang),
               T.get('policy_s2_desc', lang),
+              themeColor,
             ),
             _buildPolicySection(
               T.get('policy_s3_title', lang),
               T.get('policy_s3_desc', lang),
+              themeColor,
             ),
             _buildPolicySection(
               T.get('policy_s4_title', lang),
               T.get('policy_s4_desc', lang),
+              themeColor,
             ),
 
             const SizedBox(height: 60),
@@ -67,24 +73,25 @@ class PrivacyPolicyView extends StatelessWidget {
     );
   }
 
-  Widget _buildPolicySection(String title, String content) {
+  Widget _buildPolicySection(String title, String content, Color themeColor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.05)),
+        // 枠線の色をテーマカラーに連動
+        border: Border.all(color: themeColor.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 15,
-              color: Colors.pinkAccent,
+              color: themeColor, // セクションタイトルの色を連動
             ),
           ),
           const SizedBox(height: 12),

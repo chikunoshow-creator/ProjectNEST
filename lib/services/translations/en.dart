@@ -290,4 +290,7 @@ const Map<String, String> en = {
   'card_rank': 'Intimacy Rank',
   'card_messages': 'Total Messages',
   'card_since': 'Anniversary',
+  'memory_context':
+      '[Facts you know about your partner]\n{memories}\nNaturally use this information to make the conversation more personal.',
+  'theme_title': 'Choose a theme color',
 };

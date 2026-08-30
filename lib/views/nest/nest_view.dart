@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/reply_service.dart'; // パスが一段深くなったので修正
+import '../../services/reply_service.dart';
 import '../../services/translation_service.dart';
 
 class NestView extends StatefulWidget {
@@ -30,17 +30,19 @@ class _NestViewState extends State<NestView> {
     bool isMobile = screenWidth < 700;
     String charPrefix = widget.replyService.charKey;
 
+    // ★ テーマ色の取得
+    final themeColor = widget.replyService.themeColor;
+
     return Stack(
       children: [
         // 1. 背景層
         widget.background,
 
-        // 2. キャラクター層（黄金比配置）
+        // 2. キャラクター層
         Positioned.fill(
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 600),
             curve: Curves.easeOutCubic,
-            // プロフィールが出ている時は少し左に寄せる演出（デスクトップのみ）
             alignment: isMobile
                 ? Alignment.bottomCenter
                 : (_isProfileVisible
@@ -54,7 +56,7 @@ class _NestViewState extends State<NestView> {
           ),
         ),
 
-        // 3. プロフィール層（下半身を隠す枠）
+        // 3. プロフィール層
         Align(
           alignment: isMobile ? Alignment.bottomCenter : Alignment.centerRight,
           child: AnimatedOpacity(
@@ -66,6 +68,7 @@ class _NestViewState extends State<NestView> {
                 isMobile,
                 screenWidth,
                 screenHeight,
+                themeColor, // ★ 色を渡す
               ),
             ),
           ),
@@ -78,7 +81,7 @@ class _NestViewState extends State<NestView> {
           child: FloatingActionButton.small(
             elevation: 2,
             backgroundColor: Colors.white.withValues(alpha: 0.9),
-            foregroundColor: Colors.pinkAccent,
+            foregroundColor: themeColor, // ★ ボタンのアイコン色を連動
             onPressed: () =>
                 setState(() => _isProfileVisible = !_isProfileVisible),
             child: Icon(
@@ -94,29 +97,28 @@ class _NestViewState extends State<NestView> {
     bool isMobile,
     double screenWidth,
     double screenHeight,
+    Color themeColor,
   ) {
     return Container(
       width: isMobile ? double.infinity : screenWidth * 0.42,
       height: isMobile ? screenHeight * 0.48 : double.infinity,
-      // スマホ版では下からせり上がる、PC版では右から出てくるマージン設定
       margin: isMobile
           ? const EdgeInsets.fromLTRB(15, 0, 15, 10)
           : const EdgeInsets.fromLTRB(0, 80, 30, 80),
-      child: _buildProfileContent(isMobile),
+      child: _buildProfileContent(isMobile, themeColor), // ★ 色を渡す
     );
   }
 
-  Widget _buildProfileContent(bool isMobile) {
+  Widget _buildProfileContent(bool isMobile, Color themeColor) {
     final lang = widget.replyService.language;
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        // より透明感のある白
         color: Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
-            color: Colors.pinkAccent.withValues(alpha: 0.1),
+            color: themeColor.withValues(alpha: 0.1), // ★ 影の色を連動
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -129,37 +131,42 @@ class _NestViewState extends State<NestView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                widget.replyService.displayName,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.pinkAccent,
-                  letterSpacing: 1.2,
+              Expanded(
+                child: Text(
+                  widget.replyService.displayName,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: themeColor, // ★ 名前色を連動
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
-              Text(
-                "${lang == 'ja' ? "本名" : "Full Name"}: ${widget.replyService.fullPersonalityName}",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.pinkAccent.withValues(alpha: 0.7),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              //const SizedBox(height: 15),
-              _buildIntimacyBadge(lang),
+              _buildIntimacyBadge(themeColor), // ★ 色を渡す
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${lang == 'ja' ? "本名" : "Full Name"}: ${widget.replyService.fullPersonalityName}",
+            style: TextStyle(
+              fontSize: 12,
+              color: themeColor.withValues(alpha: 0.7), // ★ 本名の文字色を連動
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 20),
 
-          // スクロール可能な詳細エリア
+          // スクロールエリア
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle(T.get('self_intro_title', lang)),
+                  _buildSectionTitle(
+                    T.get('self_intro_title', lang),
+                    themeColor,
+                  ),
                   Text(
                     widget.replyService.selfIntro,
                     style: const TextStyle(
@@ -169,13 +176,13 @@ class _NestViewState extends State<NestView> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildSectionTitle(T.get('likes_title', lang)),
+                  _buildSectionTitle(T.get('likes_title', lang), themeColor),
                   Text(
                     widget.replyService.likes,
                     style: const TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                   const SizedBox(height: 15),
-                  _buildSectionTitle(T.get('dislikes_title', lang)),
+                  _buildSectionTitle(T.get('dislikes_title', lang), themeColor),
                   Text(
                     widget.replyService.dislikes,
                     style: const TextStyle(fontSize: 14, color: Colors.black87),
@@ -185,32 +192,30 @@ class _NestViewState extends State<NestView> {
               ),
             ),
           ),
-
-          const SizedBox(height: 20),
-          //_buildDiaryButton(lang),
+          const SizedBox(height: 10),
         ],
       ),
     );
   }
 
-  Widget _buildIntimacyBadge(String lang) {
+  Widget _buildIntimacyBadge(Color themeColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.pinkAccent.withValues(alpha: 0.1),
+        color: themeColor.withValues(alpha: 0.1), // ★ バッジ背景を連動
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.favorite, color: Colors.pinkAccent, size: 18),
+          Icon(Icons.favorite, color: themeColor, size: 18), // ★ ハートの色を連動
           const SizedBox(width: 6),
           Text(
             "${widget.replyService.intimacyScore}",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.pinkAccent,
+              color: themeColor, // ★ スコアの色を連動
             ),
           ),
         ],
@@ -218,7 +223,7 @@ class _NestViewState extends State<NestView> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color themeColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
@@ -226,7 +231,7 @@ class _NestViewState extends State<NestView> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Colors.pinkAccent.withValues(alpha: 0.6),
+          color: themeColor.withValues(alpha: 0.6), // ★ セクションタイトルの色を連動
           letterSpacing: 1.0,
         ),
       ),

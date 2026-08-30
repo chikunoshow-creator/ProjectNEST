@@ -17,28 +17,36 @@ class DiaryListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(T.get('diary', lang)),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // 文字色を連動
       ),
       body: diaries.isEmpty
-          ? _buildEmptyState(lang)
+          ? _buildEmptyState(lang, themeColor) // 色を渡す
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: diaries.length,
               itemBuilder: (context, index) {
-                return _buildDiaryCard(context, diaries[index], lang);
+                return _buildDiaryCard(
+                  context,
+                  diaries[index],
+                  lang,
+                  themeColor,
+                );
               },
             ),
     );
   }
 
-  Widget _buildEmptyState(String lang) {
+  // 空の状態のデザイン
+  Widget _buildEmptyState(String lang, Color themeColor) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -46,7 +54,7 @@ class DiaryListPage extends StatelessWidget {
           Icon(
             Icons.menu_book,
             size: 80,
-            color: Colors.pinkAccent.withValues(alpha: 0.3),
+            color: themeColor.withValues(alpha: 0.3), // アイコン色を連動
           ),
           const SizedBox(height: 20),
           Text(
@@ -54,7 +62,7 @@ class DiaryListPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.pinkAccent.withValues(alpha: 0.5),
+              color: themeColor.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 10),
@@ -68,7 +76,13 @@ class DiaryListPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDiaryCard(BuildContext context, DiaryEntry entry, String lang) {
+  // 1日分の日記カード
+  Widget _buildDiaryCard(
+    BuildContext context,
+    DiaryEntry entry,
+    String lang,
+    Color themeColor,
+  ) {
     String dateStr = DateFormat('yyyy.MM.dd').format(entry.date);
     String dayStr = DateFormat('EEE').format(entry.date);
 
@@ -88,11 +102,12 @@ class DiaryListPage extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: () => _showDiaryDetail(context, entry, lang),
+          onTap: () => _showDiaryDetail(context, entry, lang, themeColor),
           child: IntrinsicHeight(
             child: Row(
               children: [
-                Container(width: 6, color: _getThemeColor()),
+                // 左端の線（性格カラーを優先しつつ、デフォルトをテーマ色に）
+                Container(width: 6, color: _getThemeColor(themeColor)),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -112,12 +127,13 @@ class DiaryListPage extends StatelessWidget {
                             Text(
                               dayStr,
                               style: TextStyle(
-                                color: Colors.pinkAccent.withValues(alpha: 0.5),
+                                color: themeColor.withValues(
+                                  alpha: 0.5,
+                                ), // 曜日を連動
                                 fontSize: 12,
                               ),
                             ),
                             const Spacer(),
-                            // ★ 追加：AIが選んだ気分（絵文字）を表示
                             Text(
                               entry.mood,
                               style: const TextStyle(fontSize: 20),
@@ -125,7 +141,6 @@ class DiaryListPage extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        // ★ 追加：AIが考えたタイトルを太字で表示
                         Text(
                           entry.title.isNotEmpty ? entry.title : "......",
                           style: const TextStyle(
@@ -157,7 +172,13 @@ class DiaryListPage extends StatelessWidget {
     );
   }
 
-  void _showDiaryDetail(BuildContext context, DiaryEntry entry, String lang) {
+  // 詳細ダイアログ
+  void _showDiaryDetail(
+    BuildContext context,
+    DiaryEntry entry,
+    String lang,
+    Color themeColor,
+  ) {
     String dateStr = lang == 'ja'
         ? DateFormat('yyyy年 MM月 dd日').format(entry.date)
         : DateFormat('MMM dd, yyyy').format(entry.date);
@@ -195,10 +216,10 @@ class DiaryListPage extends StatelessWidget {
               T
                   .get('diary_owner_title', lang)
                   .replaceAll('{name}', replyService.displayName),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: Colors.pinkAccent,
+                color: themeColor, // タイトル色を連動
               ),
             ),
             const Divider(),
@@ -218,21 +239,23 @@ class DiaryListPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("OK", style: TextStyle(color: Colors.pinkAccent)),
+            child: Text("OK", style: TextStyle(color: themeColor)), // ボタン色を連動
           ),
         ],
       ),
     );
   }
 
-  Color _getThemeColor() {
+  // カード横のアクセントカラー
+  Color _getThemeColor(Color fallback) {
     switch (replyService.personality) {
       case "クールなお姉さん":
         return Colors.blueAccent.withValues(alpha: 0.5);
       case "ツンデレ":
         return Colors.orangeAccent.withValues(alpha: 0.5);
       default:
-        return Colors.pinkAccent.withValues(alpha: 0.5);
+        // 「甘えん坊」かつブルーテーマの場合は、ピンクではなく現在のテーマ色を使う
+        return fallback.withValues(alpha: 0.5);
     }
   }
 }

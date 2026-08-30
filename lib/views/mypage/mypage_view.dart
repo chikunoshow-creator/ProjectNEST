@@ -14,7 +14,7 @@ class MyPageView extends StatelessWidget {
   final VoidCallback onResetAll;
   final VoidCallback onSettingsUpdated;
   final VoidCallback onShowAlbum;
-  final VoidCallback onCheckUpdate; // ★この1行を追加！
+  final VoidCallback onCheckUpdate;
 
   const MyPageView({
     super.key,
@@ -22,22 +22,21 @@ class MyPageView extends StatelessWidget {
     required this.onResetAll,
     required this.onSettingsUpdated,
     required this.onShowAlbum,
-    required this.onCheckUpdate, // ★ここにも追加！
+    required this.onCheckUpdate,
   });
 
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      // 背景色をNestらしい淡いピンクに
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       body: CustomScrollView(
         slivers: [
-          // 上部の余白
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
 
-          // 設定セクションの見出し
           _buildSectionHeader(lang == 'ja' ? "アカウント設定" : "Account Settings"),
 
           SliverList(
@@ -49,10 +48,7 @@ class MyPageView extends StatelessWidget {
                 subtitle: T.get('menu_backup_sub', lang),
                 destination: BackupView(
                   replyService: replyService,
-                  onRestored: () {
-                    // 復元されたら、親のChatPageでもデータを再読み込みさせる
-                    onSettingsUpdated();
-                  },
+                  onRestored: () => onSettingsUpdated(),
                 ),
               ),
               _buildMenuTile(
@@ -88,6 +84,35 @@ class MyPageView extends StatelessWidget {
             ]),
           ),
 
+          _buildSectionHeader(lang == 'ja' ? "テーマ設定" : "Theme"),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 0,
+                color: Colors.white, // カードを白に固定してスッキリさせる
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.palette_outlined, color: Colors.black26),
+                      const SizedBox(width: 16),
+                      _themeCircle(context, "pink", Colors.pinkAccent),
+                      const SizedBox(width: 16),
+                      _themeCircle(context, "blue", Colors.blueAccent),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           _buildSectionHeader(lang == 'ja' ? "サポート" : "Support"),
 
           SliverList(
@@ -118,41 +143,43 @@ class MyPageView extends StatelessWidget {
               ),
             ]),
           ),
-          // MyPageViewのSliverListの中、または末尾に追加
+
           _buildSectionHeader(lang == 'ja' ? "アプリ情報" : "App Info"),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Card(
                 elevation: 0,
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: ListTile(
-                  leading: const Icon(
+                  leading: Icon(
                     Icons.info_outline,
-                    color: Colors.blueAccent,
-                  ),
+                    color: themeColor,
+                  ), // ★ アイコン色連動
                   title: const Text(
                     "Version",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text("Ver ${replyService.appVersion}"),
                   trailing: TextButton(
-                    onPressed: () {
-                      // ChatPageのメソッドを呼ぶか、直接同様のロジックを実行
-                      // ここでは簡易的に「更新チェック」をトリガー
-                      onCheckUpdate();
-                    },
-                    child: Text(T.get('version_check_btn', lang)),
+                    onPressed: onCheckUpdate,
+                    child: Text(
+                      T.get('version_check_btn', lang),
+                      style: TextStyle(
+                        color: themeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          // 危険な操作セクション
-          _buildSectionHeader(lang == 'ja' ? "重要な操作" : "Critical Actions"),
 
+          _buildSectionHeader(lang == 'ja' ? "重要な操作" : "Critical Actions"),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -175,15 +202,6 @@ class MyPageView extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    lang == 'ja'
-                        ? "会話や思い出のリセットはこちら"
-                        : "Reset conversation and memories",
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.redAccent,
                     ),
                   ),
                   trailing: const Icon(
@@ -226,19 +244,23 @@ class MyPageView extends StatelessWidget {
     required String subtitle,
     required Widget destination,
   }) {
+    final themeColor = replyService.themeColor;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 0,
+        color: Colors.white, // ★ カード背景を白に固定してスッキリ
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ListTile(
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.pinkAccent.withValues(alpha: 0.05),
+              color: themeColor.withValues(
+                alpha: 0.1,
+              ), // ★ 色を少し濃く(0.05->0.1)して青を強調
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: Colors.pinkAccent, size: 22),
+            child: Icon(icon, color: themeColor, size: 22),
           ),
           title: Text(
             title,
@@ -261,7 +283,7 @@ class MyPageView extends StatelessWidget {
     );
   }
 
-  // --- リセットメニューの洗練 ---
+  // --- 内部メソッド（reset, themeCircle 等）は変更なし ---
   void _showResetMenu(BuildContext context, String lang) {
     showModalBottomSheet(
       context: context,
@@ -360,6 +382,25 @@ class MyPageView extends StatelessWidget {
     );
   }
 
+  Widget _themeCircle(BuildContext context, String themeName, Color color) {
+    bool isSelected = replyService.selectedTheme == themeName;
+    return InkWell(
+      onTap: () async {
+        await replyService.setTheme(themeName);
+        onSettingsUpdated();
+      },
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: isSelected ? Border.all(color: Colors.black, width: 2) : null,
+        ),
+      ),
+    );
+  }
+
   void _confirmReset(
     BuildContext context,
     String lang,
@@ -373,9 +414,8 @@ class MyPageView extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
           lang == 'ja'
-              ? "この操作は二度と戻せないけど、本当にいい？\n（NESTとの大切な思い出が消えてしまいます）"
-              : "This action cannot be undone. \nAre you sure you want to delete these memories?",
-          style: const TextStyle(fontSize: 14, height: 1.5),
+              ? "この操作は二度と戻せないけど、本当にいい？"
+              : "This action cannot be undone.",
         ),
         actions: [
           TextButton(

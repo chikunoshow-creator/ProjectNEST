@@ -27,10 +27,11 @@ class _WelcomeViewState extends State<WelcomeView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor; // ★ 現在のテーマ色を取得
     bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
+      backgroundColor: widget.replyService.scaffoldBg, // ★ 背景色もテーマ連動
       body: Stack(
         children: [
           Center(
@@ -66,7 +67,11 @@ class _WelcomeViewState extends State<WelcomeView> {
               ],
             ),
           ),
-          Positioned(top: 40, right: 20, child: _buildLangBtn(lang)),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: _buildLangBtn(lang, themeColor),
+          ),
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
@@ -76,11 +81,14 @@ class _WelcomeViewState extends State<WelcomeView> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 20),
+                boxShadow: [
+                  BoxShadow(
+                    color: themeColor.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                  ), // ★ 影の色もテーマ連動
                 ],
               ),
-              child: _buildStep(lang),
+              child: _buildStep(lang, themeColor), // ★ 色を渡す
             ),
           ),
         ],
@@ -110,23 +118,26 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  Widget _buildStep(String lang) {
-    if (_step == 0) return _stepWelcome(lang);
-    if (_step == 1) return _stepName(lang);
-    if (_step == 2) return _stepPersonality(lang);
-    return _stepConfig(lang);
+  Widget _buildStep(String lang, Color themeColor) {
+    if (_step == 0) return _stepWelcome(lang, themeColor);
+    if (_step == 1) return _stepName(lang, themeColor);
+    if (_step == 2) return _stepTheme(lang, themeColor); // ★ 追加ステップ
+    if (_step == 3) return _stepPersonality(lang, themeColor);
+    return _stepConfig(lang, themeColor);
   }
 
-  Widget _stepWelcome(String lang) {
+  // --- 各ステップのデザイン ---
+
+  Widget _stepWelcome(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           T.get('welcome_title', lang),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Colors.pinkAccent,
+            color: themeColor,
           ),
         ),
         const SizedBox(height: 15),
@@ -136,12 +147,19 @@ class _WelcomeViewState extends State<WelcomeView> {
           style: const TextStyle(fontSize: 14, height: 1.5),
         ),
         const SizedBox(height: 40),
-        ElevatedButton(onPressed: _next, child: Text(T.get('next', lang))),
+        ElevatedButton(
+          onPressed: _next,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
+          ),
+          child: Text(T.get('next', lang)),
+        ),
       ],
     );
   }
 
-  Widget _stepName(String lang) {
+  Widget _stepName(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -154,16 +172,100 @@ class _WelcomeViewState extends State<WelcomeView> {
           controller: _nameCtrl,
           decoration: InputDecoration(
             labelText: T.get('name_label', lang),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(color: themeColor),
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           ),
         ),
         const SizedBox(height: 40),
-        ElevatedButton(onPressed: _next, child: Text(T.get('next', lang))),
+        ElevatedButton(
+          onPressed: _next,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
+          ),
+          child: Text(T.get('next', lang)),
+        ),
       ],
     );
   }
 
-  Widget _stepPersonality(String lang) {
+  // ★ 新設：テーマカラー選択ステップ
+  Widget _stepTheme(String lang, Color themeColor) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          T.get('theme_title', lang),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 30),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _themeOption("pink", Colors.pinkAccent),
+            const SizedBox(width: 40),
+            _themeOption("blue", Colors.blueAccent),
+          ],
+        ),
+        const SizedBox(height: 50),
+        ElevatedButton(
+          onPressed: _next,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(120, 45),
+          ),
+          child: Text(T.get('next', lang)),
+        ),
+      ],
+    );
+  }
+
+  Widget _themeOption(String themeKey, Color color) {
+    // 判定を直接ここで行う
+    bool isSelected = widget.replyService.selectedTheme == themeKey;
+
+    return InkWell(
+      onTap: () async {
+        // ★ 修正：テーマの設定が終わるのを待ってから、setState で画面全体を強制的に描き直す
+        await widget.replyService.setTheme(themeKey);
+        if (mounted) {
+          setState(() {});
+        }
+      },
+      child: AnimatedContainer(
+        // AnimatedContainerにすると変化がスムーズになります
+        duration: const Duration(milliseconds: 200),
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          // 選択時の枠線をより太くはっきりさせる
+          border: isSelected ? Border.all(color: Colors.black, width: 4) : null,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.4),
+              blurRadius: isSelected ? 15 : 5,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: isSelected
+            ? const Icon(
+                Icons.check_circle_outline,
+                color: Colors.white,
+                size: 50,
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _stepPersonality(String lang, Color themeColor) {
     final pMap = {
       "甘えん坊": T.get('p_sweet', lang),
       "クールなお姉さん": T.get('p_cool', lang),
@@ -178,7 +280,6 @@ class _WelcomeViewState extends State<WelcomeView> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
-          // ★ value から initialValue に変更して警告を解消
           initialValue: _selectedP,
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
@@ -194,7 +295,7 @@ class _WelcomeViewState extends State<WelcomeView> {
           width: double.infinity,
           height: 80,
           decoration: BoxDecoration(
-            color: Colors.pink.withValues(alpha: 0.05),
+            color: themeColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: SingleChildScrollView(
@@ -207,6 +308,10 @@ class _WelcomeViewState extends State<WelcomeView> {
         const SizedBox(height: 15),
         ElevatedButton(
           onPressed: () => _keyCtrl.text.isNotEmpty ? _finish() : _next(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
+          ),
           child: Text(
             _keyCtrl.text.isNotEmpty
                 ? T.get('start_app', lang)
@@ -217,7 +322,7 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  Widget _stepConfig(String lang) {
+  Widget _stepConfig(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -232,7 +337,7 @@ class _WelcomeViewState extends State<WelcomeView> {
             labelText: "Groq API Key",
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
             suffixIcon: IconButton(
-              icon: const Icon(Icons.help_outline, color: Colors.pinkAccent),
+              icon: Icon(Icons.help_outline, color: themeColor),
               onPressed: () => GroqGuide.show(context, lang),
             ),
           ),
@@ -255,7 +360,8 @@ class _WelcomeViewState extends State<WelcomeView> {
         ElevatedButton(
           onPressed: _finish,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.pinkAccent,
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
           ),
           child: Text(T.get('start_app', lang)),
@@ -274,11 +380,10 @@ class _WelcomeViewState extends State<WelcomeView> {
         _nameCtrl.text != "あなた" &&
         _nameCtrl.text != "Guest";
     bool hasKey = _keyCtrl.text.isNotEmpty;
-    if (hasName && hasKey) _step = 2;
+    if (hasName && hasKey) _step = 3; // ★ ステップ数が増えたので 2 -> 3 に変更
   }
 
   void _finish() async {
-    // ★ updateSettings の引数から provider: "Groq" を削除
     await widget.replyService.updateSettings(
       name: _nameCtrl.text.isEmpty
           ? (widget.replyService.language == 'ja' ? "あなた" : "Guest")
@@ -295,7 +400,7 @@ class _WelcomeViewState extends State<WelcomeView> {
     if (mounted) widget.onComplete();
   }
 
-  Widget _buildLangBtn(String lang) {
+  Widget _buildLangBtn(String lang, Color themeColor) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.8),
@@ -303,10 +408,10 @@ class _WelcomeViewState extends State<WelcomeView> {
       ),
       child: TextButton.icon(
         onPressed: _showLang,
-        icon: const Icon(Icons.language, color: Colors.pinkAccent, size: 18),
+        icon: Icon(Icons.language, color: themeColor, size: 18),
         label: Text(
           lang == 'ja' ? "日本語" : "English",
-          style: const TextStyle(color: Colors.pinkAccent, fontSize: 13),
+          style: TextStyle(color: themeColor, fontSize: 13),
         ),
       ),
     );

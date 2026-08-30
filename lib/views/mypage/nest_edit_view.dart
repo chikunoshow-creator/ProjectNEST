@@ -24,7 +24,6 @@ class _NestEditViewState extends State<NestEditView> {
     super.initState();
     String currentAliases = widget.replyService.nestAliases;
 
-    // ★ 波括弧を付けて構文エラーを修正
     if (widget.replyService.language == 'en') {
       if (currentAliases == "ひな,ひなちゃん,陽菜" || currentAliases == "ひな") {
         currentAliases = "Hina,My Love";
@@ -49,6 +48,8 @@ class _NestEditViewState extends State<NestEditView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     String pLabel = widget.replyService.personality;
     if (lang == 'en') {
@@ -58,7 +59,7 @@ class _NestEditViewState extends State<NestEditView> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('edit_nest', lang),
@@ -66,7 +67,7 @@ class _NestEditViewState extends State<NestEditView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // 文字色を連動
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -81,23 +82,28 @@ class _NestEditViewState extends State<NestEditView> {
             T.get('nest_name_label', lang),
             widget.replyService.displayName,
             Icons.face_rounded,
+            themeColor,
           ),
           const SizedBox(height: 12),
           _buildInfoCard(
             T.get('personality_label', lang),
             pLabel,
             Icons.auto_awesome_rounded,
+            themeColor,
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32),
-            child: Divider(color: Colors.pinkAccent, thickness: 0.1),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Divider(
+              color: themeColor.withValues(alpha: 0.2),
+              thickness: 1,
+            ),
           ),
-          _buildNicknameField(lang),
+          _buildNicknameField(lang, themeColor), // 入力欄の色を連動
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: _saveSettings,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
+              backgroundColor: themeColor, // 保存ボタンの色を連動
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
@@ -133,7 +139,12 @@ class _NestEditViewState extends State<NestEditView> {
     );
   }
 
-  Widget _buildInfoCard(String label, String value, IconData icon) {
+  Widget _buildInfoCard(
+    String label,
+    String value,
+    IconData icon,
+    Color themeColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -142,7 +153,7 @@ class _NestEditViewState extends State<NestEditView> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.pinkAccent.withValues(alpha: 0.5), size: 24),
+          Icon(icon, color: themeColor.withValues(alpha: 0.5), size: 24),
           const SizedBox(width: 16),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,7 +182,7 @@ class _NestEditViewState extends State<NestEditView> {
     );
   }
 
-  Widget _buildNicknameField(String lang) {
+  Widget _buildNicknameField(String lang, Color themeColor) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -192,10 +203,10 @@ class _NestEditViewState extends State<NestEditView> {
             hintText: lang == 'ja' ? "ひな,ひなちゃん" : "Hina,My Love",
             filled: true,
             fillColor: Colors.white,
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.edit_note_rounded,
-              color: Colors.pinkAccent,
-            ),
+              color: themeColor,
+            ), // アイコン色を連動
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide.none,
@@ -214,7 +225,6 @@ class _NestEditViewState extends State<NestEditView> {
   }
 
   Future<void> _saveSettings() async {
-    // ★ updateSettings の引数から provider と geminiKey を削除
     await widget.replyService.updateSettings(
       name: widget.replyService.userName,
       nestName: widget.replyService.nestName,
@@ -232,6 +242,7 @@ class _NestEditViewState extends State<NestEditView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(T.get('save_complete', widget.replyService.language)),
+          backgroundColor: widget.replyService.themeColor, // 通知の色を連動
           behavior: SnackBarBehavior.floating,
         ),
       );

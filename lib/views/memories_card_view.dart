@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart'; // 日付フォーマット用
+import 'package:intl/intl.dart';
 import '../../services/reply_service.dart';
 import '../../services/translation_service.dart';
 
@@ -31,7 +31,9 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
     bool isSharing = false,
   }) async {
     try {
+      final themeColor = widget.replyService.themeColor; // ★ 追加
       await Future.delayed(const Duration(milliseconds: 100));
+
       RenderRepaintBoundary? boundary =
           _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
@@ -63,7 +65,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                         : "Image saved! Please attach it ✨")
                   : T.get('backup_success', lang),
             ),
-            backgroundColor: Colors.pinkAccent,
+            backgroundColor: themeColor, // ★ ピンク固定からテーマ連動に変更
           ),
         );
       }
@@ -108,9 +110,11 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
     final charKey = widget.replyService.charKey;
+    final themeColor = widget.replyService.themeColor; // ★ 追加
+    final scaffoldBg = themeColor.withValues(alpha: 0.05); // ★ 追加
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // ★ 背景色連動
       appBar: AppBar(
         title: Text(
           T.get('card_title', lang),
@@ -118,7 +122,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // ★ 文字色連動
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 40),
@@ -127,23 +131,25 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
             Center(
               child: RepaintBoundary(
                 key: _cardKey,
-                child: _buildCardUI(lang, charKey),
+                child: _buildCardUI(
+                  lang,
+                  charKey,
+                  themeColor,
+                ), // ★ themeColorを渡す
               ),
             ),
             const SizedBox(height: 40),
-            _buildActionButtons(lang, context),
+            _buildActionButtons(lang, context, themeColor), // ★ themeColorを渡す
           ],
         ),
       ),
     );
   }
 
-  // --- カードのデザイン本体 ---
-  Widget _buildCardUI(String lang, String charKey) {
+  Widget _buildCardUI(String lang, String charKey, Color themeColor) {
     final rank = widget.replyService.intimacyRank;
     final isRankS = (rank == "S");
 
-    // 記念日のフォーマット
     String sinceDate = "2024.01.01";
     if (widget.replyService.startDate.isNotEmpty) {
       try {
@@ -159,7 +165,6 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
       width: 380,
       height: 220,
       decoration: BoxDecoration(
-        // ★ 修正：stops を削除して自動計算に任せることで、色が2色でも3色でも正しく表示されます
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -169,7 +174,10 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                   Colors.white,
                   const Color(0xFFDAA520).withValues(alpha: 0.1),
                 ]
-              : [Colors.pinkAccent.withValues(alpha: 0.15), Colors.white],
+              : [
+                  themeColor.withValues(alpha: 0.15),
+                  Colors.white,
+                ], // ★ 通常時はテーマ色グラデーション
         ),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
@@ -180,8 +188,9 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         ),
         boxShadow: [
           BoxShadow(
-            color: (isRankS ? const Color(0xFFFFD700) : Colors.pinkAccent)
-                .withValues(alpha: 0.1),
+            color: (isRankS ? const Color(0xFFFFD700) : themeColor).withValues(
+              alpha: 0.1,
+            ), // ★ 影の色連動
             blurRadius: 25,
             offset: const Offset(0, 10),
           ),
@@ -189,28 +198,24 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
       ),
       child: Stack(
         children: [
-          // 背景の大きなハート装飾
           Positioned(
             right: -20,
             bottom: -20,
             child: Icon(
               Icons.favorite,
               size: 150,
-              color: Colors.pinkAccent.withValues(alpha: 0.03),
+              color: themeColor.withValues(alpha: 0.03), // ★ 背景ハートの色連動
             ),
           ),
-          // メインコンテンツ
           Row(
             children: [
-              // 左側：アイコンとランク
               Expanded(
                 flex: 4,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // --- アイコンとランクバッジのスタック ---
                     Stack(
-                      clipBehavior: Clip.none, // 枠線からはみ出すのを許可する
+                      clipBehavior: Clip.none,
                       children: [
                         Container(
                           padding: const EdgeInsets.all(3),
@@ -229,10 +234,9 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                             ),
                           ),
                         ),
-                        // ★ Positioned を使って位置を微調整
                         Positioned(
-                          right: -8, // 少し右側にはみ出させる
-                          bottom: 0, // 下端に合わせる
+                          right: -8,
+                          bottom: 0,
                           child: _buildRankBadge(rank),
                         ),
                       ],
@@ -245,14 +249,13 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                         fontWeight: FontWeight.bold,
                         color: isRankS
                             ? const Color(0xFFB8860B)
-                            : Colors.pinkAccent,
+                            : themeColor, // ★ 名前色連動
                         letterSpacing: 1.2,
                       ),
                     ),
                   ],
                 ),
               ),
-              // 右側：ステータス
               Expanded(
                 flex: 6,
                 child: Padding(
@@ -278,7 +281,6 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                         Icons.chat_bubble_outline_rounded,
                       ),
                       const Spacer(),
-                      // 記念日
                       Align(
                         alignment: Alignment.bottomRight,
                         child: Column(
@@ -327,10 +329,10 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
       badgeColor = Colors.blue;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // 少しスリムに
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: badgeColor,
-        borderRadius: BorderRadius.circular(8), // 角丸を少しシャープに
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
       ),
@@ -338,7 +340,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         "Rank $rank",
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 9, // 1px小さく
+          fontSize: 9,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -378,7 +380,11 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
     );
   }
 
-  Widget _buildActionButtons(String lang, BuildContext context) {
+  Widget _buildActionButtons(
+    String lang,
+    BuildContext context,
+    Color themeColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -429,25 +435,25 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
           const SizedBox(height: 30),
           TextButton.icon(
             onPressed: () => _captureAndSave(context, lang),
-            icon: const Icon(
+            icon: Icon(
               Icons.download_rounded,
-              color: Colors.pinkAccent,
+              color: themeColor,
               size: 20,
-            ),
+            ), // ★ ボタンアイコン連動
             label: Text(
               T.get('share_save_btn', lang),
-              style: const TextStyle(
-                color: Colors.pinkAccent,
+              style: TextStyle(
+                color: themeColor,
                 fontWeight: FontWeight.bold,
-              ),
+              ), // ★ ボタン文字連動
             ),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
                 side: BorderSide(
-                  color: Colors.pinkAccent.withValues(alpha: 0.2),
-                ),
+                  color: themeColor.withValues(alpha: 0.2),
+                ), // ★ 枠線連動
               ),
             ),
           ),

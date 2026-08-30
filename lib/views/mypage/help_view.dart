@@ -17,14 +17,14 @@ class HelpView extends StatelessWidget {
     }
   }
 
-  // ... 前略 ...
-
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('menu_help_title', lang),
@@ -32,18 +32,18 @@ class HelpView extends StatelessWidget {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // AppBarの文字色を連動
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           // 1. APIキーの概要
-          _buildSectionTitle(T.get('help_api_key_title', lang)),
-          _buildInfoBox(T.get('help_api_key_desc', lang)),
+          _buildSectionTitle(T.get('help_api_key_title', lang), themeColor),
+          _buildInfoBox(T.get('help_api_key_desc', lang), themeColor),
           const SizedBox(height: 32),
 
-          // 2. Groqの手順
-          _buildSectionTitle(T.get('help_groq_title', lang)),
+          // 2. Groqの手順（現在はGroq一本化のため、ここをメインに）
+          _buildSectionTitle(T.get('help_groq_title', lang), themeColor),
           _buildGuideCard(
             title: T.get('help_groq_sub', lang),
             steps: lang == 'ja'
@@ -61,34 +61,14 @@ class HelpView extends StatelessWidget {
                   ],
             url: "https://console.groq.com/keys",
             buttonText: T.get('help_groq_btn', lang),
-            color: Colors.orangeAccent,
-          ),
-          const SizedBox(height: 24),
-
-          // 3. Geminiの手順
-          _buildSectionTitle(T.get('help_gemini_title', lang)),
-          _buildGuideCard(
-            title: T.get('help_gemini_sub', lang),
-            steps: lang == 'ja'
-                ? [
-                    "「Get API key」をクリック",
-                    "「Create API key in new project」を押す",
-                    "表示された「AIzaSy...」をコピー",
-                  ]
-                : [
-                    "Click 'Get API key'",
-                    "Click 'Create API key in new project'",
-                    "Copy the 'AIzaSy...' key",
-                  ],
-            url: "https://aistudio.google.com/app/apikey",
-            buttonText: T.get('help_gemini_btn', lang),
-            color: Colors.blueAccent,
+            color: Colors.orangeAccent, // ガイド用カラーは維持（またはthemeColorでも可）
           ),
 
+          // ★ Geminiの手順セクションは「Groq一本化」のため削除しました
           const SizedBox(height: 32),
 
-          // 4. トラブルシューティング
-          _buildSectionTitle(T.get('help_trouble_title', lang)),
+          // 3. トラブルシューティング
+          _buildSectionTitle(T.get('help_trouble_title', lang), themeColor),
           _buildFaqItem(
             T.get('help_q1_title', lang),
             T.get('help_q1_ans', lang),
@@ -100,7 +80,7 @@ class HelpView extends StatelessWidget {
 
           const SizedBox(height: 60),
 
-          // 5. フッター（クレジット）
+          // 4. フッター
           _buildFooter(),
           const SizedBox(height: 40),
         ],
@@ -108,51 +88,28 @@ class HelpView extends StatelessWidget {
     );
   }
 
-  // --- ヘルパーメソッド ---
-
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        Text(
-          "Project NEST v${replyService.appVersion}",
-          style: const TextStyle(
-            color: Colors.black26,
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          "Developed by Chiku",
-          style: TextStyle(color: Colors.black26, fontSize: 11),
-        ),
-      ],
-    );
-  }
-
-  // ... 以下、_buildSectionTitle などのUIパーツ定義（前回と同じ）は省略 ...
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color color) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 12),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: Colors.pinkAccent,
+          color: color, // タイトル色を連動
           letterSpacing: 0.5,
         ),
       ),
     );
   }
 
-  Widget _buildInfoBox(String text) {
+  Widget _buildInfoBox(String text, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.1)),
+        border: Border.all(color: color.withValues(alpha: 0.1)), // 枠線を連動
       ),
       child: Text(
         text,
@@ -211,7 +168,8 @@ class HelpView extends StatelessWidget {
               children: [
                 ...List.generate(
                   steps.length,
-                  (i) => _buildStepRow(i + 1, steps[i]),
+                  (i) =>
+                      _buildStepRow(i + 1, steps[i], replyService.themeColor),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
@@ -238,7 +196,7 @@ class HelpView extends StatelessWidget {
     );
   }
 
-  Widget _buildStepRow(int num, String text) {
+  Widget _buildStepRow(int num, String text, Color themeColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -246,12 +204,12 @@ class HelpView extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 9,
-            backgroundColor: Colors.pinkAccent.withValues(alpha: 0.2),
+            backgroundColor: themeColor.withValues(alpha: 0.2), // バッジ背景を連動
             child: Text(
               "$num",
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: Colors.pinkAccent,
+                color: themeColor, // 数字の色を連動
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -302,6 +260,26 @@ class HelpView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Text(
+          "Project NEST v${replyService.appVersion}",
+          style: const TextStyle(
+            color: Colors.black26,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          "Developed by Chiku",
+          style: TextStyle(color: Colors.black26, fontSize: 11),
+        ),
+      ],
     );
   }
 }

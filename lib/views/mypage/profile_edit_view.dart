@@ -47,9 +47,11 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5),
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('menu_profile_title', lang),
@@ -57,7 +59,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // AppBarの文字・アイコン色を連動
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -66,6 +68,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             lang == 'ja'
                 ? "NESTにあなたのことを教えてあげてね。"
                 : "Tell NEST more about yourself.",
+            themeColor,
           ),
           const SizedBox(height: 24),
           _buildTextField(
@@ -73,6 +76,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             label: T.get('name_label', lang),
             icon: Icons.person_rounded,
             hint: lang == 'ja' ? "あなたの名前" : "Your Name",
+            themeColor: themeColor,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -80,6 +84,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             label: lang == 'ja' ? "誕生日" : "Birthday",
             icon: Icons.cake_rounded,
             hint: "Example: 08/25",
+            themeColor: themeColor,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -87,6 +92,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             label: lang == 'ja' ? "好きな食べ物" : "Favorite Food",
             icon: Icons.restaurant_rounded,
             hint: lang == 'ja' ? "オムライス、甘いもの、など" : "e.g. Sushi, Pizza",
+            themeColor: themeColor,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -94,12 +100,13 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             label: lang == 'ja' ? "お仕事" : "Occupation",
             icon: Icons.work_rounded,
             hint: lang == 'ja' ? "エンジニア、学生、など" : "e.g. Engineer, Student",
+            themeColor: themeColor,
           ),
           const SizedBox(height: 40),
           ElevatedButton(
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
+              backgroundColor: themeColor, // 保存ボタンの色を連動
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
@@ -117,7 +124,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     );
   }
 
-  Widget _buildInfoText(String text) {
+  Widget _buildInfoText(String text, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -126,9 +133,9 @@ class _ProfileEditViewState extends State<ProfileEditView> {
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.info_outline_rounded,
-            color: Colors.pinkAccent,
+            color: themeColor, // インフォアイコンの色を連動
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -148,6 +155,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     required String label,
     required IconData icon,
     required String hint,
+    required Color themeColor,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +175,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
           controller: controller,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: Colors.pinkAccent, size: 20),
+            prefixIcon: Icon(icon, color: themeColor, size: 20), // アイコン色を連動
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -182,7 +190,6 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   }
 
   Future<void> _saveProfile() async {
-    // ★ updateSettings の引数から provider と geminiKey を削除
     await widget.replyService.updateSettings(
       name: _nameCtrl.text,
       nestName: widget.replyService.nestName,
@@ -199,8 +206,9 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Profile Updated! ❤️"),
+        SnackBar(
+          content: const Text("Profile Updated! ❤️"),
+          backgroundColor: widget.replyService.themeColor, // 通知の色も連動
           behavior: SnackBarBehavior.floating,
         ),
       );

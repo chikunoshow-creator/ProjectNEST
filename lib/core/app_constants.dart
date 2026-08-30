@@ -20,4 +20,5 @@ class AppConstants {
   static const String backupDateKey = 'user_backup_date';
   static const String startDateKey = 'start_date';
   static const String userMemoriesKey = 'user_memories';
+  static const String themeKey = 'app_theme_color'; // 追加
 }

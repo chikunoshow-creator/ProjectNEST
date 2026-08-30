@@ -241,7 +241,9 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const CommonSplashScreen(); // ★ これだけでOK！
+      return CommonSplashScreen(
+        replyService: _replyService,
+      ); // ★ 修正後（constを消して引数を渡す）
     }
 
     if (_replyService.isFirstLaunch) {
@@ -353,12 +355,13 @@ class _ChatPageState extends State<ChatPage> {
 
   // --- UIコンポーネント: AppBar / BottomNav / Drawer ---
   PreferredSizeWidget _buildAppBar() {
+    final themeColor = _replyService.themeColor; // ★追加
     return AppBar(
       backgroundColor: Colors.white.withValues(alpha: 0.9),
       elevation: 1,
-      title: const Text(
+      title: Text(
         "Project NEST",
-        style: TextStyle(color: Colors.pinkAccent, fontWeight: FontWeight.bold),
+        style: TextStyle(color: themeColor, fontWeight: FontWeight.bold), // ★修正
       ),
       actions: [
         Center(child: Text("❤️ ${_replyService.intimacyScore} ")),
@@ -379,7 +382,7 @@ class _ChatPageState extends State<ChatPage> {
         _currentTab = i;
         if (i == 1) _unreadCount = 0;
       }),
-      selectedItemColor: Colors.pinkAccent,
+      selectedItemColor: _replyService.themeColor, // ★ここを修正
       items: [
         BottomNavigationBarItem(
           icon: const Icon(Icons.home),

@@ -270,4 +270,7 @@ const Map<String, String> ja = {
   'card_rank': '親密度ランク',
   'card_messages': '累計メッセージ数',
   'card_since': '共同生活開始日',
+  'memory_context':
+      '【あなたがパートナーについて知っていること】\n{memories}\n上記の情報を会話のスパイスとして自然に活用し、親密度を高めてください。',
+  'theme_title': 'イメージカラーを選んでね',
 };

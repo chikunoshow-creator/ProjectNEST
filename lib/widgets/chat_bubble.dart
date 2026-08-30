@@ -1,5 +1,3 @@
-// lib/widgets/chat_bubble.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/chat_message.dart';
@@ -8,11 +6,13 @@ class ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final String personality;
   final VoidCallback? onDelete;
+  final Color themeColor; // ★1. テーマ色を受け取るように追加
 
   const ChatBubble({
     super.key,
     required this.message,
     required this.personality,
+    required this.themeColor, // ★2. ここにも追加
     this.onDelete,
   });
 
@@ -24,10 +24,10 @@ class ChatBubble extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 20),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           decoration: BoxDecoration(
-            // システムメッセージを少しだけピンクがかった白に
             color: Colors.white.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.1)),
+            // ★3. 枠線のピンクをテーマ色に変更
+            border: Border.all(color: themeColor.withValues(alpha: 0.1)),
           ),
           child: Text(
             message.text,
@@ -43,17 +43,23 @@ class ChatBubble extends StatelessWidget {
       );
     }
 
-    // 性格に合わせた色の設定
+    // --- 吹き出しの色決定ロジック ---
     Color bubbleColor;
     if (message.isMe) {
       bubbleColor = const Color(0xFFDCF8C6).withValues(alpha: 0.95);
     } else {
-      if (personality == "クールなお姉さん") {
-        bubbleColor = const Color(0xFFE0F7FA).withValues(alpha: 0.95);
-      } else if (personality == "ツンデレ") {
-        bubbleColor = const Color(0xFFFFF3E0).withValues(alpha: 0.95);
+      // ★4. テーマが「青」の時は、性格に関わらず青系の吹き出しにする
+      if (themeColor != Colors.pinkAccent) {
+        bubbleColor = themeColor.withValues(alpha: 0.12);
       } else {
-        bubbleColor = const Color(0xFFFFE4E1).withValues(alpha: 0.95);
+        // テーマが「ピンク」の時は、今までの性格ごとの色を使う
+        if (personality == "クールなお姉さん") {
+          bubbleColor = const Color(0xFFE0F7FA).withValues(alpha: 0.95);
+        } else if (personality == "ツンデレ") {
+          bubbleColor = const Color(0xFFFFF3E0).withValues(alpha: 0.95);
+        } else {
+          bubbleColor = const Color(0xFFFFE4E1).withValues(alpha: 0.95);
+        }
       }
     }
 
@@ -87,17 +93,16 @@ class ChatBubble extends StatelessWidget {
                   child: Image.asset(
                     "assets/images/${charPrefix}_icon.png",
                     fit: BoxFit.cover,
+                    // ★5. エラー時のアイコン色もテーマ色に
                     errorBuilder: (c, e, s) =>
-                        const Icon(Icons.face, color: Colors.pinkAccent),
+                        Icon(Icons.face, color: themeColor),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
           ],
-
           if (message.isMe) ...[_buildTimeAndRead(), const SizedBox(width: 8)],
-
           Flexible(
             child: GestureDetector(
               onLongPress: onDelete,
@@ -117,13 +122,6 @@ class ChatBubble extends StatelessWidget {
                     bottomLeft: Radius.circular(message.isMe ? 20 : 6),
                     bottomRight: Radius.circular(message.isMe ? 6 : 20),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 3,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: SelectableText(
                   message.text,
@@ -136,7 +134,6 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-
           if (!message.isMe) ...[const SizedBox(width: 8), _buildTimeAndRead()],
         ],
       ),
@@ -154,11 +151,11 @@ class ChatBubble extends StatelessWidget {
             : CrossAxisAlignment.start,
         children: [
           if (message.isMe && message.isRead)
-            const Text(
+            Text(
               "既読",
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.pinkAccent,
+                color: themeColor, // ★6. 「既読」のピンクをテーマ色に変更
                 fontWeight: FontWeight.bold,
               ),
             ),

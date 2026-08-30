@@ -34,13 +34,13 @@ class PlaceholderView extends StatelessWidget {
   }
 
   // URLをコピー
-  void _copyLink(BuildContext context) {
+  void _copyLink(BuildContext context, Color themeColor) {
     Clipboard.setData(ClipboardData(text: appUrl));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(T.get('support_copy_success', replyService.language)),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.pinkAccent,
+        backgroundColor: themeColor, // 通知の色を連動
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
@@ -62,14 +62,16 @@ class PlaceholderView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF5F5), // 統一された背景色
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // AppBarの文字色を連動
       ),
       body: SingleChildScrollView(
         child: Center(
@@ -85,25 +87,25 @@ class PlaceholderView extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.pinkAccent.withValues(alpha: 0.1),
+                        color: themeColor.withValues(alpha: 0.1), // 影の色を連動
                         blurRadius: 20,
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.favorite_rounded,
                     size: 60,
-                    color: Colors.pinkAccent,
+                    color: themeColor, // ハートの色を連動
                   ),
                 ),
                 const SizedBox(height: 32),
 
                 Text(
                   T.get('menu_support_title', lang),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.pinkAccent,
+                    color: themeColor, // タイトル色を連動
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -186,7 +188,7 @@ class PlaceholderView extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _buildActionButton(
-                        onPressed: () => _copyLink(context),
+                        onPressed: () => _copyLink(context, themeColor),
                         icon: Icons.link_rounded,
                         label: T.get('support_btn_copy', lang),
                         color: Colors.grey[100]!,
@@ -200,7 +202,7 @@ class PlaceholderView extends StatelessWidget {
                 // フッタークレジット
                 Column(
                   children: [
-                    Text(
+                    const Text(
                       "© 2026 Project NEST",
                       style: TextStyle(
                         color: Colors.black26,
@@ -212,7 +214,7 @@ class PlaceholderView extends StatelessWidget {
                     Text(
                       "Developed by Chiku",
                       style: TextStyle(
-                        color: Colors.pinkAccent.withValues(alpha: 0.5),
+                        color: themeColor.withValues(alpha: 0.5), // クレジットをテーマ色に
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),

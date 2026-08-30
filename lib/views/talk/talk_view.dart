@@ -16,7 +16,6 @@ class TalkView extends StatefulWidget {
   final VoidCallback onMicStart;
   final VoidCallback onMicEnd;
   final Function(int) onDeleteMessage;
-  // backgroundはChatPageから渡されますが、TalkView側で壁紙ロジックを優先させます
   final Widget background;
 
   const TalkView({
@@ -74,32 +73,32 @@ class _TalkViewState extends State<TalkView> {
 
   @override
   Widget build(BuildContext context) {
-    // ★ 壁紙ロジックの修正：getAllBackgrounds からパスを検索するように変更
+    // テーマ色の取得
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = widget.replyService.scaffoldBg;
+
     final backgrounds = widget.replyService.getAllBackgrounds();
     final selectedBgData = backgrounds.firstWhere(
       (bg) => bg['id'] == widget.replyService.selectedBg,
       orElse: () => {"path": ""},
     );
+
+    // ★ 壁紙のデフォルト背景色をテーマに連動
     Widget wallpaper = widget.replyService.selectedBg == "default"
-        ? Container(color: const Color(0xFFFFF0F5))
+        ? Container(color: scaffoldBg)
         : Image.asset(
             selectedBgData['path'],
             fit: BoxFit.cover,
-            // ★ トーク画面でも上部を優先的に表示
             alignment: const Alignment(0, -0.7),
-            errorBuilder: (c, e, s) =>
-                Container(color: const Color(0xFFFFF0F5)),
+            errorBuilder: (c, e, s) => Container(color: scaffoldBg),
           );
+
     return Stack(
       children: [
         Positioned.fill(child: wallpaper),
-        // 2. メインコンテンツ
         Column(
           children: [
-            // AppBarとの重なりを防ぐ余白
             const SizedBox(height: 90),
-
-            // チャットリスト
             Expanded(
               child: ListView.builder(
                 controller: widget.scrollController,
@@ -113,20 +112,20 @@ class _TalkViewState extends State<TalkView> {
                     message: widget.messages[index],
                     personality: widget.replyService.personality,
                     onDelete: () => _showDeleteConfirm(context, index),
+                    themeColor: themeColor, // ★ テーマ色を渡す
                   );
                 },
               ),
             ),
 
-            // 入力中インジケーター
-            if (widget.isTyping) _buildTypingIndicator(),
+            // 入力中インジケーター（色を連動）
+            if (widget.isTyping) _buildTypingIndicator(themeColor),
 
-            // 絵文字と入力エリア
             _buildBottomControls(),
           ],
         ),
 
-        // 3. 最新へ戻るボタン
+        // 最新へ戻るボタン（色を連動）
         if (_showScrollButton)
           Positioned(
             bottom: 130,
@@ -135,7 +134,7 @@ class _TalkViewState extends State<TalkView> {
               heroTag: "scrollBtn",
               onPressed: _scrollToBottom,
               backgroundColor: Colors.white.withValues(alpha: 0.9),
-              foregroundColor: Colors.pinkAccent,
+              foregroundColor: themeColor, // ★ ボタンのアイコン色を連動
               elevation: 4,
               child: const Icon(Icons.keyboard_arrow_down),
             ),
@@ -144,7 +143,7 @@ class _TalkViewState extends State<TalkView> {
     );
   }
 
-  Widget _buildTypingIndicator() {
+  Widget _buildTypingIndicator(Color themeColor) {
     return Padding(
       padding: const EdgeInsets.only(left: 20, bottom: 10),
       child: Align(
@@ -157,8 +156,8 @@ class _TalkViewState extends State<TalkView> {
           ),
           child: Text(
             "${widget.replyService.displayName}が入力中...",
-            style: const TextStyle(
-              color: Colors.pinkAccent,
+            style: TextStyle(
+              color: themeColor, // ★ テキスト色を連動
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -227,9 +226,9 @@ class _TalkViewState extends State<TalkView> {
                   controller: widget.chatController,
                   style: const TextStyle(fontSize: 15, height: 1.4),
                   minLines: 1,
-                  maxLines: 5, // 最大5行のこだわり
+                  maxLines: 5,
                   keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline, // Enterで改行
+                  textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
                     hintText: T
                         .get('hint_msg', lang)
@@ -245,10 +244,8 @@ class _TalkViewState extends State<TalkView> {
               ),
             ),
             const SizedBox(width: 8),
-            // マイクボタン
             _buildMicButton(),
             const SizedBox(width: 4),
-            // 送信ボタン
             _buildSendButton(),
           ],
         ),
@@ -268,7 +265,7 @@ class _TalkViewState extends State<TalkView> {
           color: isListening
               ? Colors.redAccent.withValues(alpha: 0.1)
               : Colors.transparent,
-          shape: BoxShape.circle, // ★ BoxType から BoxShape に修正
+          shape: BoxShape.circle,
         ),
         child: Icon(
           isListening ? Icons.mic : Icons.mic_none,
@@ -285,9 +282,9 @@ class _TalkViewState extends State<TalkView> {
       width: 44,
       margin: const EdgeInsets.only(bottom: 2),
       child: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.send_rounded,
-          color: Colors.pinkAccent,
+          color: widget.replyService.themeColor, // ★ 送信ボタン色を連動
           size: 28,
         ),
         onPressed: widget.onSend,
@@ -296,7 +293,6 @@ class _TalkViewState extends State<TalkView> {
   }
 
   void _showDeleteConfirm(BuildContext context, int index) {
-    // 削除確認ダイアログ（デザイン統一）
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

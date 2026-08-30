@@ -17,9 +17,12 @@ class AlbumView extends StatelessWidget {
     final lang = replyService.language;
     final backgrounds = replyService.getAllBackgrounds();
 
+    // テーマ色の取得
+    final themeColor = replyService.themeColor;
+    final scaffoldBg = replyService.themeColor.withValues(alpha: 0.05);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
-      // --- 修正点①：AppBarの「壁紙を外す」ボタン ---
+      backgroundColor: scaffoldBg, // 背景色を連動
       appBar: AppBar(
         title: Text(
           T.get('album', lang),
@@ -27,18 +30,16 @@ class AlbumView extends StatelessWidget {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: Colors.pinkAccent,
+        foregroundColor: themeColor, // AppBarの文字色を連動
         actions: [
           IconButton(
             onPressed: () => _setAsBackground(context, "default"),
-            // ★ アイコンを「画像なし（斜線付き）」に変更
             icon: const Icon(Icons.hide_image_outlined),
             tooltip: T.get('remove_wallpaper', lang),
           ),
           const SizedBox(width: 8),
         ],
       ),
-
       body: Column(
         children: [
           // アルバムの紹介文
@@ -52,7 +53,7 @@ class AlbumView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.pinkAccent.withValues(alpha: 0.7),
+                color: themeColor.withValues(alpha: 0.7), // 紹介文の色を連動
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -64,7 +65,7 @@ class AlbumView extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.75, // 少し横幅に余裕を持たせる
+                childAspectRatio: 0.75,
               ),
               itemCount: backgrounds.length,
               itemBuilder: (context, index) {
@@ -83,9 +84,10 @@ class AlbumView extends StatelessWidget {
     );
   }
 
-  // --- 修正点②：_showPreview 内の画像位置の調整 ---
   void _showPreview(BuildContext context, Map<String, dynamic> bg) {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -130,8 +132,6 @@ class AlbumView extends StatelessWidget {
                   child: Image.asset(
                     bg['path'],
                     fit: BoxFit.cover,
-                    // ★ alignment を調整して、画像の「上端」から表示するようにします
-                    // これにより、キャラの頭が切れるのを防ぎ、少し下げた位置（y=-0.8）を基準にします
                     alignment: const Alignment(0, -0.8),
                   ),
                 ),
@@ -145,7 +145,7 @@ class AlbumView extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
+                  backgroundColor: themeColor, // ボタンの色を連動
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
@@ -167,13 +167,14 @@ class AlbumView extends StatelessWidget {
     );
   }
 
-  // AlbumView内 _buildAlbumCard を差し替え
   Widget _buildAlbumCard(
     Map<String, dynamic> bg,
     bool isUnlocked,
     String lang,
   ) {
+    final themeColor = replyService.themeColor;
     bool isSelected = replyService.selectedBg == bg['id'];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -181,13 +182,13 @@ class AlbumView extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: isSelected
-                ? Colors.pinkAccent.withValues(alpha: 0.3)
+                ? themeColor.withValues(alpha: 0.3)
                 : Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
           ),
         ],
         border: isSelected
-            ? Border.all(color: Colors.pinkAccent, width: 2)
+            ? Border.all(color: themeColor, width: 2) // 選択枠の色を連動
             : null,
       ),
       child: Column(
@@ -235,7 +236,9 @@ class AlbumView extends StatelessWidget {
                             : "Unlock at ${bg['minScore']}"),
                   style: TextStyle(
                     fontSize: 9,
-                    color: isUnlocked ? Colors.black54 : Colors.pinkAccent,
+                    color: isUnlocked
+                        ? Colors.black54
+                        : themeColor, // 解放条件の色を連動
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -249,6 +252,8 @@ class AlbumView extends StatelessWidget {
 
   void _setAsBackground(BuildContext context, String bgId) async {
     final lang = replyService.language;
+    final themeColor = replyService.themeColor;
+
     await replyService.setBackground(bgId);
     onBgChanged();
     if (!context.mounted) return;
@@ -257,7 +262,7 @@ class AlbumView extends StatelessWidget {
         content: Text(T.get('wallpaper_set_msg', lang)),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        backgroundColor: Colors.pinkAccent,
+        backgroundColor: themeColor, // SnackBarの色を連動
       ),
     );
   }
