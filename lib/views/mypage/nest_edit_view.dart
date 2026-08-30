@@ -19,21 +19,22 @@ class NestEditView extends StatefulWidget {
 class _NestEditViewState extends State<NestEditView> {
   late TextEditingController _aliasesCtrl;
 
-  // lib/views/mypage/nest_edit_view.dart の initState
-
   @override
   void initState() {
     super.initState();
     String currentAliases = widget.replyService.nestAliases;
 
-    // もしエイリアスが日本語デフォルト名のいずれかであれば、英語名に差し替え
+    // ★ 波括弧を付けて構文エラーを修正
     if (widget.replyService.language == 'en') {
-      if (currentAliases == "ひな,ひなちゃん,陽菜" || currentAliases == "ひな")
+      if (currentAliases == "ひな,ひなちゃん,陽菜" || currentAliases == "ひな") {
         currentAliases = "Hina,My Love";
-      if (currentAliases == "しずる,しず,静流" || currentAliases == "しずる")
+      }
+      if (currentAliases == "しずる,しず,静流" || currentAliases == "しずる") {
         currentAliases = "Shizuru,Honey";
-      if (currentAliases == "かえで,楓,かえたん" || currentAliases == "かえで")
+      }
+      if (currentAliases == "かえで,楓,かえたん" || currentAliases == "かえで") {
         currentAliases = "Kaede,Sweetie";
+      }
     }
 
     _aliasesCtrl = TextEditingController(text: currentAliases);
@@ -49,7 +50,6 @@ class _NestEditViewState extends State<NestEditView> {
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
 
-    // 性格ラベルの翻訳処理
     String pLabel = widget.replyService.personality;
     if (lang == 'en') {
       if (pLabel == "甘えん坊") pLabel = T.get('p_sweet', lang);
@@ -71,15 +71,12 @@ class _NestEditViewState extends State<NestEditView> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          // ガイドテキスト
           _buildInfoText(
             lang == 'ja'
                 ? "${widget.replyService.displayName}への呼び方を設定できるよ。AIがあなたの呼びかけを理解しやすくなります。"
                 : "Set how you want to call ${widget.replyService.displayName}. This helps her understand you better.",
           ),
           const SizedBox(height: 24),
-
-          // 固定情報（名前・性格）をカード形式で
           _buildInfoCard(
             T.get('nest_name_label', lang),
             widget.replyService.displayName,
@@ -91,17 +88,12 @@ class _NestEditViewState extends State<NestEditView> {
             pLabel,
             Icons.auto_awesome_rounded,
           ),
-
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
             child: Divider(color: Colors.pinkAccent, thickness: 0.1),
           ),
-
-          // 呼び名（エイリアス）の設定
           _buildNicknameField(lang),
-
           const SizedBox(height: 40),
-
           ElevatedButton(
             onPressed: _saveSettings,
             style: ElevatedButton.styleFrom(
@@ -222,15 +214,13 @@ class _NestEditViewState extends State<NestEditView> {
   }
 
   Future<void> _saveSettings() async {
+    // ★ updateSettings の引数から provider と geminiKey を削除
     await widget.replyService.updateSettings(
       name: widget.replyService.userName,
       nestName: widget.replyService.nestName,
       nestAliases: _aliasesCtrl.text,
       p: widget.replyService.personality,
-      provider: widget.replyService.aiProvider,
       apiKey: widget.replyService.groqApiKey,
-      // ★ ここを geminiKey に修正して整合性を合わせました
-      geminiKey: widget.replyService.geminiApiKey,
       birthday: widget.replyService.userBirthday,
       food: widget.replyService.userFood,
       job: widget.replyService.userJob,

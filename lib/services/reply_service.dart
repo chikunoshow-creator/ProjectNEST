@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_constants.dart';
 import '../models/diary_entry.dart';
 import 'ai_service.dart';
+import 'translation_service.dart'; // ★追加
 
 class ReplyService {
   final AiService _aiService = AiService();
@@ -22,7 +23,6 @@ class ReplyService {
   String personality = "甘えん坊";
   String aiProvider = "Groq";
   String groqApiKey = "";
-  String geminiApiKey = "";
   int intimacyScore = 0;
   String selectedBg = "default";
   bool isFirstLaunch = true;
@@ -116,9 +116,7 @@ class ReplyService {
     userFood = prefs.getString(AppConstants.foodKey) ?? "";
     userJob = prefs.getString(AppConstants.jobKey) ?? "";
     personality = prefs.getString(AppConstants.personalityKey) ?? "甘えん坊";
-    aiProvider = prefs.getString(AppConstants.aiProviderKey) ?? "Groq";
     groqApiKey = prefs.getString(AppConstants.groqKey) ?? "";
-    geminiApiKey = prefs.getString(AppConstants.geminiKey) ?? "";
     intimacyScore = prefs.getInt(AppConstants.intimacyKey) ?? 0;
     selectedBg = prefs.getString(AppConstants.bgKey) ?? "default";
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
@@ -257,50 +255,25 @@ class ReplyService {
   }
 
   Future<String> createReply(String msg) async {
-    intimacyScore++;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
-    String personalityRole = "";
-    if (language == 'ja') {
-      if (personality == "甘えん坊")
-        personalityRole = "あなたは甘えん坊で、パートナーに全力で甘えたり、大好きだと伝えたりする可愛い女の子です。";
-      else if (personality == "クールなお姉さん")
-        personalityRole = "あなたは落ち着いていて、相手を優しく見守り、包容力をもって接する年上のお姉さんです。";
-      else if (personality == "ツンデレ")
-        personalityRole = "あなたは素直になれず、ぶっきらぼうな態度を取ってしまいますが、本当は相手のことが大好きな女の子です。";
-    } else {
-      if (personality == "甘えん坊")
-        personalityRole =
-            "You are a clingy, sweet girl who loves your partner and wants to be pampered.";
-      else if (personality == "クールなお姉さん")
-        personalityRole =
-            "You are a calm, mature, and reliable older sister figure who treats the partner with kindness.";
-      else
-        personalityRole =
-            "You are a tsundere girl who acts tough but secretly cares deeply for the partner.";
-    }
+    // 1. 性格Roleの決定 (T.get を使用)
+    String pKey = (personality == "甘えん坊")
+        ? 'role_sweet'
+        : (personality == "クールなお姉さん" ? 'role_cool' : 'role_tsun');
+    String personalityRole = T.get(pKey, language);
 
-    String guardrails = language == 'ja'
-        ? "【重要ルール】卑猥・違法・深刻な話題、または『AIでしょ？』等のメタな話題には、世界観を守るために可愛く困ったり話題を逸らしてください。"
-        : "[Rule] For sensitive or meta-talk like 'Are you an AI?', respond as a girl in this world, acting embarrassed or changing the subject.";
+    // 2. 親密度による態度の決定
+    String intimacyInstruction = (intimacyScore < 50)
+        ? T.get('intimacy_low', language)
+        : (intimacyScore < 200
+              ? T.get('intimacy_mid', language)
+              : T.get('intimacy_high', language));
 
-    String intimacyInstruction = "";
-    if (language == 'ja') {
-      if (intimacyScore < 50)
-        intimacyInstruction = "まだ出会ったばかりなので、少し控えめで恥ずかしがり屋な態度をとってください。";
-      else if (intimacyScore < 200)
-        intimacyInstruction = "かなり仲良くなってきたので、親しみやすく、時々甘えるような態度をとってください。";
-      else
-        intimacyInstruction = "あなたは彼に心から恋をしています。深い信頼と愛情を込めて接してください。";
-    }
-
-    String formatRule = language == 'ja'
-        ? "【禁止事項】メタ発言は絶対に禁止です。自然な会話のみを行ってください。返信は短く、2〜3文程度の親しみやすいチャット形式にしてください。"
-        : "[Forbidden] Never explain your persona. Just talk naturally. Keep replies very short (2-3 sentences) in a chat style.";
-
+    // 3. プロンプト構築
     String systemPrompt =
-        "あなたの名前は$nestName、相手は$userNameです。 $personalityRole $intimacyInstruction $guardrails $formatRule";
+        "あなたの名前は$nestName、相手は$userNameです。 "
+        "$personalityRole $intimacyInstruction ${T.get('guardrails', language)} ${T.get('format_rule', language)}";
 
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
@@ -309,21 +282,25 @@ class ReplyService {
       userMessage: msg,
     );
 
+    // ★ 救出ロジック ＆ 親密度ペナルティ
     if (reply == "NEST_ERROR") {
+      // 親密度を 5 下げる（最低0まで）
+      intimacyScore = (intimacyScore > 5) ? intimacyScore - 5 : 0;
+      await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
+
       bool isEn = (language == 'en');
       if (personality == "クールなお姉さん")
-        return isEn
-            ? "I'm not quite sure how to respond."
-            : "その質問にはどう答えたらいいか困っちゃうな。";
-      else if (personality == "ツンデレ")
-        return isEn
-            ? "Hah?! I don't know what you're talking about!"
-            : "はぁ！？あんた何言ってるのよ！";
-      else
-        return isEn
-            ? "Umm... that's a bit difficult for me... (>_<)"
-            : "うーん…それはちょっと、難しいかも…ごめんね？(>_<)";
+        return isEn ? "I'm not sure how to respond." : "その質問にはどう答えたらいいか困っちゃうな。";
+      if (personality == "ツンデレ")
+        return isEn ? "Hah?! What are you saying!" : "はぁ！？あんた何言ってるのよ！";
+      return isEn
+          ? "Umm... that's a bit difficult... (>_<)"
+          : "うーん…それはちょっと、難しいかも…(>_<)";
     }
+
+    // 正常な場合は親密度 +1
+    intimacyScore++;
+    await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
     _history.add({"role": "user", "content": msg});
     _history.add({"role": "assistant", "content": reply});
@@ -354,9 +331,7 @@ class ReplyService {
     required String nestName,
     required String nestAliases,
     required String p,
-    required String provider,
-    required String apiKey,
-    String geminiKey = "",
+    required String apiKey, // provider 引数を削除
     String birthday = "",
     String food = "",
     String job = "",
@@ -366,19 +341,16 @@ class ReplyService {
     this.nestName = nestName;
     this.nestAliases = nestAliases;
     personality = p;
-    aiProvider = provider;
-    groqApiKey = apiKey;
-    this.geminiApiKey = geminiKey;
+    groqApiKey = apiKey; // geminiKey は削除
     userBirthday = birthday;
     userFood = food;
     userJob = job;
+
     await prefs.setString(AppConstants.userKey, name);
     await prefs.setString(AppConstants.nestNameKey, nestName);
     await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
     await prefs.setString(AppConstants.personalityKey, p);
-    await prefs.setString(AppConstants.aiProviderKey, provider);
     await prefs.setString(AppConstants.groqKey, apiKey);
-    await prefs.setString(AppConstants.geminiKey, geminiKey);
     await prefs.setString(AppConstants.birthdayKey, birthday);
     await prefs.setString(AppConstants.foodKey, food);
     await prefs.setString(AppConstants.jobKey, job);
@@ -444,7 +416,6 @@ class ReplyService {
       'personality': personality,
       'aiProvider': aiProvider,
       'groqApiKey': groqApiKey,
-      'geminiApiKey': geminiApiKey,
       'intimacyScore': intimacyScore,
       'selectedBg': selectedBg,
       'language': language,
@@ -466,7 +437,6 @@ class ReplyService {
     personality = data['personality'] ?? "甘えん坊";
     aiProvider = data['aiProvider'] ?? "Groq";
     groqApiKey = data['groqApiKey'] ?? "";
-    geminiApiKey = data['geminiApiKey'] ?? "";
     intimacyScore = data['intimacyScore'] ?? 0;
     selectedBg = data['selectedBg'] ?? "default";
     language = data['language'] ?? language;

@@ -25,7 +25,6 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   @override
   void initState() {
     super.initState();
-    // 各項目の初期値をセット
     _nameCtrl = TextEditingController(
       text: widget.replyService.displayUserName,
     );
@@ -69,7 +68,6 @@ class _ProfileEditViewState extends State<ProfileEditView> {
                 : "Tell NEST more about yourself.",
           ),
           const SizedBox(height: 24),
-
           _buildTextField(
             controller: _nameCtrl,
             label: T.get('name_label', lang),
@@ -77,7 +75,6 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             hint: lang == 'ja' ? "あなたの名前" : "Your Name",
           ),
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _birthdayCtrl,
             label: lang == 'ja' ? "誕生日" : "Birthday",
@@ -85,7 +82,6 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             hint: "Example: 08/25",
           ),
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _foodCtrl,
             label: lang == 'ja' ? "好きな食べ物" : "Favorite Food",
@@ -93,16 +89,13 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             hint: lang == 'ja' ? "オムライス、甘いもの、など" : "e.g. Sushi, Pizza",
           ),
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _jobCtrl,
             label: lang == 'ja' ? "お仕事" : "Occupation",
             icon: Icons.work_rounded,
             hint: lang == 'ja' ? "エンジニア、学生、など" : "e.g. Engineer, Student",
           ),
-
           const SizedBox(height: 40),
-
           ElevatedButton(
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
@@ -115,7 +108,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
               elevation: 2,
             ),
             child: Text(
-              T.get('save', lang), // ★ save_btn を save に修正
+              T.get('save', lang),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
@@ -189,15 +182,13 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   }
 
   Future<void> _saveProfile() async {
+    // ★ updateSettings の引数から provider と geminiKey を削除
     await widget.replyService.updateSettings(
       name: _nameCtrl.text,
       nestName: widget.replyService.nestName,
       nestAliases: widget.replyService.nestAliases,
       p: widget.replyService.personality,
-      provider: widget.replyService.aiProvider,
       apiKey: widget.replyService.groqApiKey,
-      // ★ ここを geminiApiKey から geminiKey に修正します
-      geminiKey: widget.replyService.geminiApiKey,
       birthday: _birthdayCtrl.text,
       food: _foodCtrl.text,
       job: _jobCtrl.text,

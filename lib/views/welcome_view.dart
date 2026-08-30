@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/reply_service.dart';
 import '../services/translation_service.dart';
-import '../widgets/groq_guide.dart'; // ★ インポート追加
+import '../widgets/groq_guide.dart';
 
 class WelcomeView extends StatefulWidget {
   final ReplyService replyService;
@@ -27,14 +27,12 @@ class _WelcomeViewState extends State<WelcomeView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
-    // ★ isMobile を使用してレスポンシブな高さ調整に活用します
     bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF0F5),
       body: Stack(
         children: [
-          // キャラクター立ち絵
           Center(
             child: Stack(
               alignment: Alignment.bottomCenter,
@@ -68,13 +66,11 @@ class _WelcomeViewState extends State<WelcomeView> {
               ],
             ),
           ),
-          // 言語スイッチ
           Positioned(top: 40, right: 20, child: _buildLangBtn(lang)),
-          // 入力カード
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: 380, // 下半身を隠す元の高さ
+              height: 380,
               margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -84,7 +80,7 @@ class _WelcomeViewState extends State<WelcomeView> {
                   BoxShadow(color: Colors.black12, blurRadius: 20),
                 ],
               ),
-              child: _buildStep(lang), // ★ lang を渡して警告を解消
+              child: _buildStep(lang),
             ),
           ),
         ],
@@ -92,7 +88,6 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  // ★ isMobile を受け取ってキャラの大きさを調整するように変更
   Widget _buildChar(String name, String asset, Alignment align, bool isMobile) {
     bool isSelected = _selectedP == name;
     return AnimatedAlign(
@@ -103,12 +98,9 @@ class _WelcomeViewState extends State<WelcomeView> {
         duration: const Duration(milliseconds: 400),
         opacity: isSelected ? 1.0 : 0.0,
         child: Container(
-          // キャラクター全体を少し上に浮かせるためのマージン
-          // 下側に少し余白を作ることで、画像全体が上に押し上げられます
           margin: const EdgeInsets.only(bottom: 20),
           child: Image.asset(
             asset,
-            // ★ 高さを一回りアップ（モバイル 0.75 -> 0.82 / PC 0.85 -> 0.95）
             height:
                 MediaQuery.of(context).size.height * (isMobile ? 0.82 : 0.95),
             fit: BoxFit.contain,
@@ -118,7 +110,6 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  // ★ 各ステップに lang を渡して、メソッド内での未使用警告を解消
   Widget _buildStep(String lang) {
     if (_step == 0) return _stepWelcome(lang);
     if (_step == 1) return _stepName(lang);
@@ -187,7 +178,8 @@ class _WelcomeViewState extends State<WelcomeView> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
-          value: _selectedP,
+          // ★ value から initialValue に変更して警告を解消
+          initialValue: _selectedP,
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           ),
@@ -200,7 +192,7 @@ class _WelcomeViewState extends State<WelcomeView> {
         Container(
           padding: const EdgeInsets.all(12),
           width: double.infinity,
-          height: 80, // 説明文のエリアを固定
+          height: 80,
           decoration: BoxDecoration(
             color: Colors.pink.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(10),
@@ -213,16 +205,8 @@ class _WelcomeViewState extends State<WelcomeView> {
           ),
         ),
         const SizedBox(height: 15),
-        // stepPersonality 内の ElevatedButton 部分の修正案
         ElevatedButton(
-          onPressed: () {
-            // APIキーが既にあるなら、そのまま完了(finish)へ。なければ次のステップへ。
-            if (_keyCtrl.text.isNotEmpty) {
-              _finish();
-            } else {
-              _next();
-            }
-          },
+          onPressed: () => _keyCtrl.text.isNotEmpty ? _finish() : _next(),
           child: Text(
             _keyCtrl.text.isNotEmpty
                 ? T.get('start_app', lang)
@@ -247,7 +231,6 @@ class _WelcomeViewState extends State<WelcomeView> {
           decoration: InputDecoration(
             labelText: "Groq API Key",
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-            // ★ 共通部品 GroqGuide を呼び出す
             suffixIcon: IconButton(
               icon: const Icon(Icons.help_outline, color: Colors.pinkAccent),
               onPressed: () => GroqGuide.show(context, lang),
@@ -260,7 +243,7 @@ class _WelcomeViewState extends State<WelcomeView> {
           onPressed: () =>
               launchUrl(Uri.parse("https://console.groq.com/keys")),
           child: Text(
-            T.get('get_key_link', lang), // ★ 辞書から取得
+            T.get('get_key_link', lang),
             style: const TextStyle(
               color: Colors.blue,
               fontSize: 12,
@@ -284,25 +267,18 @@ class _WelcomeViewState extends State<WelcomeView> {
   @override
   void initState() {
     super.initState();
-
-    // 1. 保存されているデータをセット
     _nameCtrl.text = widget.replyService.userName;
     _keyCtrl.text = widget.replyService.groqApiKey;
-
-    // 2. 「Nestのリセット」からの遷移か判定
-    // 名前がデフォルト以外 ＆ APIキーが入っているなら、ステップ2（性格選択）へ
     bool hasName =
         _nameCtrl.text.isNotEmpty &&
         _nameCtrl.text != "あなた" &&
         _nameCtrl.text != "Guest";
     bool hasKey = _keyCtrl.text.isNotEmpty;
-
-    if (hasName && hasKey) {
-      _step = 2; // いきなり性格選択から開始
-    }
+    if (hasName && hasKey) _step = 2;
   }
 
   void _finish() async {
+    // ★ updateSettings の引数から provider: "Groq" を削除
     await widget.replyService.updateSettings(
       name: _nameCtrl.text.isEmpty
           ? (widget.replyService.language == 'ja' ? "あなた" : "Guest")
@@ -312,7 +288,6 @@ class _WelcomeViewState extends State<WelcomeView> {
           ? "ひな"
           : (_selectedP == "ツンデレ" ? "かえで" : "しずる"),
       p: _selectedP,
-      provider: "Groq",
       apiKey: _keyCtrl.text,
     );
     await widget.replyService.addFirstMessage(widget.replyService.selfIntro);

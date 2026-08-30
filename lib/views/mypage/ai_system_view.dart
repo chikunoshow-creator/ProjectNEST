@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/reply_service.dart';
 import '../../services/translation_service.dart';
-import '../../widgets/groq_guide.dart'; // ★ ガイドをインポート
+import '../../widgets/groq_guide.dart';
 
 class AiSystemView extends StatefulWidget {
   final ReplyService replyService;
@@ -18,26 +18,20 @@ class AiSystemView extends StatefulWidget {
 }
 
 class _AiSystemViewState extends State<AiSystemView> {
-  late String _tempProvider;
   late String _tempLang;
   late TextEditingController _groqKeyCtrl;
-  late TextEditingController _geminiKeyCtrl;
 
   @override
   void initState() {
     super.initState();
-    _tempProvider = widget.replyService.aiProvider;
     _tempLang = widget.replyService.language;
     _groqKeyCtrl = TextEditingController(text: widget.replyService.groqApiKey);
-    _geminiKeyCtrl = TextEditingController(
-      text: widget.replyService.geminiApiKey,
-    );
+    // Gemini用コントローラーは削除
   }
 
   @override
   void dispose() {
     _groqKeyCtrl.dispose();
-    _geminiKeyCtrl.dispose();
     super.dispose();
   }
 
@@ -57,7 +51,6 @@ class _AiSystemViewState extends State<AiSystemView> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          // システム情報の安心ガイド
           _buildInfoText(
             _tempLang == 'ja'
                 ? "APIキーはあなたのブラウザ内にのみ保存され、開発者にも送信されません。安心して設定してね。"
@@ -65,7 +58,7 @@ class _AiSystemViewState extends State<AiSystemView> {
           ),
           const SizedBox(height: 24),
 
-          // 1. 言語設定（ここでも変更可能に）
+          // 1. 言語設定
           _buildSectionTitle(_tempLang == 'ja' ? "表示言語" : "Language"),
           _buildCard(
             child: DropdownButtonFormField<String>(
@@ -83,31 +76,24 @@ class _AiSystemViewState extends State<AiSystemView> {
           ),
           const SizedBox(height: 24),
 
-          // 2. AIプロバイダー選択
+          // 2. AIエンジン（表示のみ、または一本化された説明）
           _buildSectionTitle(_tempLang == 'ja' ? "AIエンジン" : "AI Provider"),
           _buildCard(
-            child: DropdownButtonFormField<String>(
-              value: _tempProvider,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                prefixIcon: Icon(Icons.psychology, color: Colors.pinkAccent),
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.psychology, color: Colors.pinkAccent),
+              title: const Text("Groq (Recommended)"),
+              subtitle: Text(
+                _tempLang == 'ja'
+                    ? "高速で自然な会話が可能です"
+                    : "Fast and natural conversation",
+                style: const TextStyle(fontSize: 11),
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: "Groq",
-                  child: Text("Groq (Recommended)"),
-                ),
-                DropdownMenuItem(
-                  value: "Gemini",
-                  child: Text("Gemini (Experimental)"),
-                ),
-              ],
-              onChanged: (v) => setState(() => _tempProvider = v!),
             ),
           ),
           const SizedBox(height: 24),
 
-          // 3. APIキー入力
+          // 3. Groq APIキー入力
           _buildSectionTitle("Groq API Key"),
           _buildCard(
             child: TextField(
@@ -120,7 +106,6 @@ class _AiSystemViewState extends State<AiSystemView> {
                   Icons.vpn_key_rounded,
                   color: Colors.pinkAccent,
                 ),
-                // ★ ここで GroqGuide を呼び出す
                 suffixIcon: IconButton(
                   icon: const Icon(
                     Icons.help_outline_rounded,
@@ -132,25 +117,7 @@ class _AiSystemViewState extends State<AiSystemView> {
             ),
           ),
 
-          if (_tempProvider == "Gemini") ...[
-            const SizedBox(height: 24),
-            _buildSectionTitle("Gemini API Key"),
-            _buildCard(
-              child: TextField(
-                controller: _geminiKeyCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  hintText: "AIza...",
-                  border: InputBorder.none,
-                  prefixIcon: Icon(
-                    Icons.vpn_key_rounded,
-                    color: Colors.pinkAccent,
-                  ),
-                ),
-              ),
-            ),
-          ],
-
+          // Gemini用の入力欄(if文ごと)を削除
           const SizedBox(height: 48),
 
           ElevatedButton(
@@ -239,15 +206,13 @@ class _AiSystemViewState extends State<AiSystemView> {
     // 言語設定を保存
     await widget.replyService.setLanguage(_tempLang);
 
-    // 全ての設定を更新
+    // ★ updateSettingsの呼び出しを修正（provider, geminiKeyを削除）
     await widget.replyService.updateSettings(
       name: widget.replyService.userName,
       nestName: widget.replyService.nestName,
       nestAliases: widget.replyService.nestAliases,
       p: widget.replyService.personality,
-      provider: _tempProvider,
       apiKey: _groqKeyCtrl.text,
-      geminiKey: _geminiKeyCtrl.text,
       birthday: widget.replyService.userBirthday,
       food: widget.replyService.userFood,
       job: widget.replyService.userJob,
