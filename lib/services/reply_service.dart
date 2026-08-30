@@ -13,7 +13,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService(); // ★追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.155";
+  final String appVersion = "1.156";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
