@@ -275,4 +275,16 @@ const Map<String, String> en = {
       'You are deeply in love with him. Please interact with deep trust and affection.',
   'format_rule':
       '[Forbidden] Meta-talk is strictly prohibited. Only natural conversation. Keep replies very short (2-3 sentences) in a chat style.',
+  // en.dart の末尾などに追加
+  'desc_sweet':
+      'Always smiling and loves you! She is a bit lonely and wants to be with you all the time.',
+  'desc_cool':
+      'A calm and reliable mature type. Her occasional playful smile is her greatest charm.',
+  'desc_tsun':
+      "Acts tough and can't be honest. But she is very cute when she blushes in private.",
+
+  'error_sweet': "Umm... that's a bit difficult for me... (>_<)",
+  'error_cool':
+      "I'm not quite sure how to respond. Let's talk about something else.",
+  'error_tsun': "Hah?! I don't know what you're talking about! Don't tease me!",
 };

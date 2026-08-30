@@ -46,16 +46,19 @@ class AiService {
   // メンテナンス＆最新バージョン情報の取得
   Future<Map<String, dynamic>> fetchMaintenanceConfig() async {
     try {
-      // キャッシュを避けるためにタイムスタンプを付与して maintenance.json を取得
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final response = await http.get(Uri.parse('maintenance.json?v=$ts'));
+      // ★ URLの末尾に「現在の時刻」を付けることで、ブラウザに「これは新しいリクエストだ」と思わせる（キャッシュ回避）
+      final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final response = await http.get(
+        Uri.parse('maintenance.json?v=$timestamp'),
+      );
+
       if (response.statusCode == 200) {
         return jsonDecode(utf8.decode(response.bodyBytes));
       }
     } catch (e) {
       print("Update check error: $e");
     }
-    return {"enabled": false, "latest_version": "1.151"};
+    return {"enabled": false, "latest_version": "1.152"};
   }
 
   // 日記生成用

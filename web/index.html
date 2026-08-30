@@ -8,6 +8,12 @@
       font-family: "Noto Sans JP", sans-serif;
     }
   </style>
+
+  <!-- キャッシュ制御：index.html自体が古くならないように指示 -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <!-- ★ ここから追加：Google Analytics (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-R2CGPQN6DW"></script>
   <script>
@@ -18,27 +24,13 @@
   </script>
   <!-- ★ ここまで追加 -->
 
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
-  <!-- ★ OGP / Facebook / X(Twitter) 設定（実際のURLに修正済み） -->
+  <!-- ★ OGP / Facebook / X(Twitter) 設定 -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://chikunoshow-creator.github.io/ProjectNEST/">
   <meta property="og:title" content="Project NEST - あなたに寄り添うAIパートナー">
   <meta property="og:description" content="ブラウザでいつでも会える、あなただけのAI彼女。日々の会話や秘密の日記で、二人の絆を深めましょう。">
-  <!-- 画像パスを ogp_image.png に指定 -->
   <meta property="og:image" content="https://chikunoshow-creator.github.io/ProjectNEST/ogp_image.png">
   <meta name="author" content="Chiku">
 
@@ -50,13 +42,11 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <!-- descriptionを適切な内容に修正 -->
   <meta name="description" content="ブラウザでいつでも会える、あなただけのAI彼女「NEST」との日常を楽しみましょう。">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <!-- アプリ名を正式名称に修正 -->
   <meta name="apple-mobile-web-app-title" content="Project NEST">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -68,14 +58,20 @@
 </head>
 
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
+  <!-- 
+    Service Worker の読み込み設定をカスタマイズ。
+    既存の flutter_bootstrap.js を使用しつつ、
+    アップデートのチェックをキャッシュを通さず行うように指示します。
   -->
+  <script>
+    // Flutterのブートストラップ設定を拡張
+    window.flutterConfig = {
+      serviceWorker: {
+        // キャッシュをバイパスしてService Workerの更新を確認する
+        updateViaCache: 'none',
+      }
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 

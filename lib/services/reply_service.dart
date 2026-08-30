@@ -6,11 +6,13 @@ import '../core/app_constants.dart';
 import '../models/diary_entry.dart';
 import 'ai_service.dart';
 import 'translation_service.dart'; // ★追加
+import 'reply_storage_service.dart'; // ★この1行を追加してください！
 
 class ReplyService {
   final AiService _aiService = AiService();
+  final ReplyStorageService _storage = ReplyStorageService(); // ★追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.152";
+  final String appVersion = "1.153";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -285,20 +287,16 @@ class ReplyService {
       userMessage: msg,
     );
 
-    // ★ 救出ロジック ＆ 親密度ペナルティ
+    // ★ 救出ロジック ＆ 親密度ペナルティ 部分を修正
     if (reply == "NEST_ERROR") {
-      // 親密度を 5 下げる（最低0まで）
       intimacyScore = (intimacyScore > 5) ? intimacyScore - 5 : 0;
       await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
-      bool isEn = (language == 'en');
-      if (personality == "クールなお姉さん")
-        return isEn ? "I'm not sure how to respond." : "その質問にはどう答えたらいいか困っちゃうな。";
-      if (personality == "ツンデレ")
-        return isEn ? "Hah?! What are you saying!" : "はぁ！？あんた何言ってるのよ！";
-      return isEn
-          ? "Umm... that's a bit difficult... (>_<)"
-          : "うーん…それはちょっと、難しいかも…(>_<)";
+      // 性格ごとのエラーメッセージを T.get で取得
+      final errorKey = (personality == "甘えん坊")
+          ? 'error_sweet'
+          : (personality == "クールなお姉さん" ? 'error_cool' : 'error_tsun');
+      return T.get(errorKey, language);
     }
 
     // 正常な場合は親密度 +1
@@ -334,29 +332,23 @@ class ReplyService {
     required String nestName,
     required String nestAliases,
     required String p,
-    required String apiKey, // provider 引数を削除
+    required String apiKey,
     String birthday = "",
     String food = "",
     String job = "",
   }) async {
-    final prefs = await SharedPreferences.getInstance();
+    // 1. メモリ上の変数を更新
     userName = name;
     this.nestName = nestName;
     this.nestAliases = nestAliases;
     personality = p;
-    groqApiKey = apiKey; // geminiKey は削除
+    groqApiKey = apiKey;
     userBirthday = birthday;
     userFood = food;
     userJob = job;
 
-    await prefs.setString(AppConstants.userKey, name);
-    await prefs.setString(AppConstants.nestNameKey, nestName);
-    await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
-    await prefs.setString(AppConstants.personalityKey, p);
-    await prefs.setString(AppConstants.groqKey, apiKey);
-    await prefs.setString(AppConstants.birthdayKey, birthday);
-    await prefs.setString(AppConstants.foodKey, food);
-    await prefs.setString(AppConstants.jobKey, job);
+    // 2. ストレージサービスに丸投げ
+    await _storage.saveAllSettings(exportAllData());
     await _loadPersonalityJson();
   }
 
@@ -478,29 +470,21 @@ class ReplyService {
     await prefs.setString(AppConstants.backupDateKey, now);
   }
 
+  // 内部スロットに保存
   Future<void> saveToInternalSlot() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = exportAllData();
-    await prefs.setString(AppConstants.backupDataKey, jsonEncode(data));
-    await saveBackupDate();
+    await _storage.saveToInternalSlot(exportAllData());
   }
 
+  // 内部スロットから復元
   Future<bool> restoreFromInternalSlot() async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString(AppConstants.backupDataKey);
     if (savedData != null) {
-      try {
-        final Map<String, dynamic> data = jsonDecode(savedData);
-        await importAllData(data);
-        return true;
-      } catch (e) {
-        print("Restore Error: $e");
-        return false;
-      }
+      await importAllData(jsonDecode(savedData));
+      return true;
     }
     return false;
   }
-  // --- 不足していたゲッターとメソッドの復旧 ---
 
   // 性格のフルネーム（ひな / Hina など）を取得
   String get fullPersonalityName => language == 'en'
@@ -508,23 +492,11 @@ class ReplyService {
       : (personalityNames[personality] ?? "");
 
   // 性格ごとの詳細説明文（WelcomeViewなどで使用）を取得
+  // 修正後：1行で完結
   String getSpecificDescription(String p, String lang) {
-    bool isEn = (lang == 'en');
-    if (p == "甘えん坊") {
-      return isEn
-          ? "Always smiling and loves you! She is a bit lonely and wants to be with you all the time."
-          : "いつもニコニコしていて、あなたのことが大好き！全力で甘えてくる、寂しがり屋なタイプ。";
-    }
-    if (p == "クールなお姉さん") {
-      return isEn
-          ? "A calm and reliable mature type. Her occasional playful smile is her greatest charm."
-          : "落ち着いた雰囲気の、頼れるお姉さんタイプ。たまに見せる、茶目っ気のある笑顔が魅力。";
-    }
-    if (p == "ツンデレ") {
-      return isEn
-          ? "Acts tough and can't be honest. But she is very cute when she blushes in private."
-          : "素直になれない強気な態度。でも、二人きりになると顔を赤らめて照れる姿がとっても可愛い。";
-    }
-    return "";
+    final key = (p == "甘えん坊")
+        ? 'desc_sweet'
+        : (p == "クールなお姉さん" ? 'desc_cool' : 'desc_tsun');
+    return T.get(key, lang);
   }
 }

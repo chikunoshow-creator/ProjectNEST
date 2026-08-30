@@ -89,10 +89,17 @@ class _ChatPageState extends State<ChatPage> {
               child: const Text("あとで"),
             ),
             ElevatedButton(
-              onPressed: () {
-                // 強制リロード
-                _replyService.resetApp(); // キャッシュをクリアするための念押し
-                // Web用の強制リロード（エラーが出る場合は後述のインポートを追加）
+              onPressed: () async {
+                // 1. 全てのService Workerを解除する
+                final html.ServiceWorkerContainer swContainer =
+                    html.window.navigator.serviceWorker!;
+                final registrations = await swContainer.getRegistrations();
+                for (var reg in registrations) {
+                  await reg.unregister();
+                  print("Service Worker Unregistered");
+                }
+
+                // 2. ブラウザのキャッシュを無視して強制リロード
                 html.window.location.reload();
               },
               child: const Text("更新する"),
