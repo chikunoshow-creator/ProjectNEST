@@ -1,0 +1,8 @@
+[
+    {
+        "id": "cafe",
+        "title": "昼下がりのカフェデート",
+        "description": "二人でのんびりコーヒーを飲んだ思い出。",
+        "requiredIntimacy": 10
+    }
+]
