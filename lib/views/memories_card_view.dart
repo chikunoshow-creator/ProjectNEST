@@ -50,7 +50,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
       html.AnchorElement(href: url)
         ..setAttribute(
           "download",
-          "NEST_Certificate_${widget.replyService.displayName}.png",
+          "NEST_Certificate_${widget.replyService.displayName}.webp",
         )
         ..click();
       html.Url.revokeObjectUrl(url);
@@ -230,7 +230,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                             radius: 42,
                             backgroundColor: Colors.grey[100],
                             backgroundImage: AssetImage(
-                              "assets/images/${charKey}_icon.png",
+                              "assets/images/${charKey}_icon.webp",
                             ),
                           ),
                         ),

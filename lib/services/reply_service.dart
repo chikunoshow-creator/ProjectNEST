@@ -8,6 +8,7 @@ import 'ai_service.dart';
 import 'translation_service.dart'; // ★追加
 import 'reply_storage_service.dart'; // ★この1行を追加してください！
 import 'package:flutter/material.dart'; // ★これがないと Colors でエラーが出ます
+import '../models/nest_profile.dart'; // ★これを追加
 
 class ReplyService {
   final AiService _aiService = AiService();
@@ -47,6 +48,7 @@ class ReplyService {
     "クールなお姉さん": "Shizuru",
     "ツンデレ": "Kaede",
   };
+  NestProfile partnerProfile = NestProfile();
 
   ReplyService() {
     String deviceLang = PlatformDispatcher.instance.locale.languageCode;
@@ -95,11 +97,12 @@ class ReplyService {
     }
   }
 
+  // 内部IDの刷新
   String get charKey => (personality == "ツンデレ")
-      ? "sayo"
+      ? "kaede" // sayo -> kaede
       : (personality == "クールなお姉さん")
-      ? "goki"
-      : "hau";
+      ? "shizuru" // goki -> shizuru
+      : "hina"; // hau -> hina
 
   DateTime get nestToday {
     DateTime now = DateTime.now();
@@ -414,7 +417,7 @@ class ReplyService {
       {
         "id": "room",
         "name": isEn ? "Usual Room" : "いつものお部屋",
-        "path": "assets/images/bg_room_$cp.png",
+        "path": "assets/images/bg_room_$cp.webp", // .png -> .webp
         "minScore": 0,
       },
       {

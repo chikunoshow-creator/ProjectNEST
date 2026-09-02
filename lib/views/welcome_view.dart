@@ -40,7 +40,7 @@ class _WelcomeViewState extends State<WelcomeView> {
               children: [
                 _buildChar(
                   "ツンデレ",
-                  "assets/images/sayo_normal.png",
+                  "assets/images/kaede_normal.webp", // sayo_normal.png -> kaede_normal.webp
                   _selectedP == "ツンデレ"
                       ? Alignment.bottomCenter
                       : const Alignment(-2.0, 1.0),
@@ -48,7 +48,7 @@ class _WelcomeViewState extends State<WelcomeView> {
                 ),
                 _buildChar(
                   "クールなお姉さん",
-                  "assets/images/goki_normal.png",
+                  "assets/images/shizuru_normal.webp", // goki_normal.png -> shizuru_normal.webp
                   _selectedP == "クールなお姉さん"
                       ? Alignment.bottomCenter
                       : const Alignment(2.0, 1.0),
@@ -56,7 +56,7 @@ class _WelcomeViewState extends State<WelcomeView> {
                 ),
                 _buildChar(
                   "甘えん坊",
-                  "assets/images/hau_normal.png",
+                  "assets/images/hina_normal.webp", // hau_normal.png -> hina_normal.webp
                   _selectedP == "甘えん坊"
                       ? Alignment.bottomCenter
                       : (_selectedP == "ツンデレ"
@@ -67,6 +67,7 @@ class _WelcomeViewState extends State<WelcomeView> {
               ],
             ),
           ),
+
           Positioned(
             top: 40,
             right: 20,

@@ -49,7 +49,7 @@ class _NestViewState extends State<NestView> {
                       ? const Alignment(-0.3, 1.0)
                       : Alignment.bottomCenter),
             child: Image.asset(
-              "assets/images/${charPrefix}_normal.png",
+              "assets/images/${charPrefix}_normal.webp",
               height: isMobile ? screenHeight * 0.80 : screenHeight * 0.90,
               fit: BoxFit.contain,
             ),

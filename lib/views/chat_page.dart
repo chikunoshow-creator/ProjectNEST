@@ -277,7 +277,7 @@ class _ChatPageState extends State<ChatPage> {
       width: double.infinity,
       height: double.infinity,
       child: Image.asset(
-        "assets/images/bg_room_$charKey.png", // 例: assets/images/bg_room_hau.png
+        "assets/images/bg_room_$charKey.webp", // 例: assets/images/bg_room_hau.png
         fit: BoxFit.cover,
         // 画像が読み込めない時のためのフォールバック（予備）
         errorBuilder: (context, error, stackTrace) {

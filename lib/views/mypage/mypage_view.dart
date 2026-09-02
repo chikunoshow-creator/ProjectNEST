@@ -237,6 +237,8 @@ class MyPageView extends StatelessWidget {
     );
   }
 
+  // --- lib/views/mypage/mypage_view.dart (修正箇所：_buildMenuTile) ---
+
   Widget _buildMenuTile(
     BuildContext context, {
     required IconData icon,
@@ -249,15 +251,13 @@ class MyPageView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         elevation: 0,
-        color: Colors.white, // ★ カード背景を白に固定してスッキリ
+        color: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ListTile(
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: themeColor.withValues(
-                alpha: 0.1,
-              ), // ★ 色を少し濃く(0.05->0.1)して青を強調
+              color: themeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: themeColor, size: 22),
@@ -276,7 +276,13 @@ class MyPageView extends StatelessWidget {
           ),
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => destination),
+            PageRouteBuilder(
+              // MaterialPageRoute から書き換え
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  destination,
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
           ),
         ),
       ),

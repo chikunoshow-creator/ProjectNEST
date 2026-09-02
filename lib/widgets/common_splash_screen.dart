@@ -27,9 +27,11 @@ class CommonSplashScreen extends StatelessWidget {
               child: CircleAvatar(
                 radius: 60,
                 backgroundColor: Colors.white,
-                backgroundImage: const AssetImage('assets/images/hau_icon.png'),
+                backgroundImage: const AssetImage(
+                  'assets/images/hina_icon.webp',
+                ),
                 child: Image.asset(
-                  'assets/images/hau_icon.png',
+                  'assets/images/hina_icon.webp',
                   errorBuilder: (c, e, s) => Icon(
                     Icons.favorite,
                     size: 60,

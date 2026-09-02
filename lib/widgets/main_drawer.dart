@@ -22,6 +22,14 @@ class MainDrawer extends StatelessWidget {
     required this.onShowResetDialog,
   });
 
+  Route _noAnimationRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = replyService.language;
@@ -56,7 +64,7 @@ class MainDrawer extends StatelessWidget {
                       radius: 40,
                       backgroundColor: Colors.pink[50],
                       backgroundImage: AssetImage(
-                        "assets/images/${charKey}_icon.png",
+                        "assets/images/${charKey}_icon.webp",
                       ),
                     ),
                   ),
@@ -87,8 +95,8 @@ class MainDrawer extends StatelessWidget {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (c) => AlbumView(
+                          _noAnimationRoute(
+                            AlbumView(
                               replyService: replyService,
                               onBgChanged: onBgChanged,
                             ),
@@ -104,8 +112,8 @@ class MainDrawer extends StatelessWidget {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (c) => DiaryListPage(
+                          _noAnimationRoute(
+                            DiaryListPage(
                               diaries: replyService.getDiaries(),
                               replyService: replyService,
                             ),
@@ -121,13 +129,13 @@ class MainDrawer extends StatelessWidget {
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (c) =>
-                                MemoriesCardView(replyService: replyService),
+                          _noAnimationRoute(
+                            MemoriesCardView(replyService: replyService),
                           ),
                         );
                       },
                     ),
+
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Divider(color: Colors.pinkAccent, thickness: 0.1),
