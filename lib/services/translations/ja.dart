@@ -116,6 +116,7 @@ const Map<String, String> ja = {
   'dislikes_title': '💔 苦手なもの',
   'today_diary_btn': '今日の日記',
   'diary': '思い出日記帳',
+  'share_nest': 'NESTを教える',
 
   // --- ガイド ---
   'guide_title': 'APIキーの取得方法',
@@ -273,4 +274,8 @@ const Map<String, String> ja = {
   'memory_context':
       '【あなたがパートナーについて知っていること】\n{memories}\n上記の情報を会話のスパイスとして自然に活用し、親密度を高めてください。',
   'theme_title': 'イメージカラーを選んでね',
+
+  // --- share NEST ---
+  'share_title': 'NESTを教える',
+  'share_desc': 'このQRコードをスキャンして\nProject NESTをシェアしよう',
 };

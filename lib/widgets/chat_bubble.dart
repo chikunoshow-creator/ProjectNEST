@@ -1,5 +1,3 @@
-// --- lib/widgets/chat_bubble.dart (最適化版) ---
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/chat_message.dart';
@@ -44,12 +42,13 @@ class ChatBubble extends StatelessWidget {
       );
     }
 
-    // 内部IDの判定
+    // --- 内部IDの判定 (新ネーミング規則に対応) ---
+    // 現在は女性アセットのみのため、固定で _f を付与しています。
     String charPrefix = personality == "クールなお姉さん"
-        ? "shizuru"
-        : (personality == "ツンデレ" ? "kaede" : "hina");
+        ? "cool_f"
+        : (personality == "ツンデレ" ? "tsundere_f" : "clingy_f");
 
-    // 吹き出しの色の決定
+    // 吹き出しの色の決定 (変更なし)
     Color bubbleColor;
     if (message.isMe) {
       bubbleColor = const Color(0xFFDCF8C6).withValues(alpha: 0.95);
@@ -76,7 +75,6 @@ class ChatBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!message.isMe) ...[
-            // ★【最適化】RepaintBoundaryで囲み、アイコンの再描画を抑止
             RepaintBoundary(
               child: Container(
                 decoration: BoxDecoration(
@@ -93,7 +91,7 @@ class ChatBubble extends StatelessWidget {
                   backgroundColor: Colors.white,
                   child: ClipOval(
                     child: Image.asset(
-                      "assets/images/${charPrefix}_icon.webp",
+                      "assets/images/${charPrefix}_icon.webp", // clingy_f_icon.webp 等
                       fit: BoxFit.cover,
                       errorBuilder: (c, e, s) =>
                           Icon(Icons.face, color: themeColor),
@@ -125,8 +123,6 @@ class ChatBubble extends StatelessWidget {
                     bottomRight: Radius.circular(message.isMe ? 6 : 20),
                   ),
                 ),
-                // ★【Web最適化】SelectableTextは重いため、通常のTextを検討しても良いですが、
-                // 利便性のため残す場合は、ここにもRepaintBoundaryを検討。
                 child: SelectableText(
                   message.text,
                   style: const TextStyle(

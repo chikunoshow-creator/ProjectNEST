@@ -5,6 +5,7 @@ import '../services/translation_service.dart';
 import '../views/album_view.dart';
 import '../views/diary_list_page.dart';
 import '../views/memories_card_view.dart';
+import 'share_qr_dialog.dart';
 
 class MainDrawer extends StatelessWidget {
   final ReplyService replyService;
@@ -156,6 +157,20 @@ class MainDrawer extends StatelessWidget {
                       () {
                         Navigator.pop(context);
                         onShowPwaGuide();
+                      },
+                    ),
+                    _buildDrawerItem(
+                      Icons.qr_code_2_rounded,
+                      T.get('share_title', lang), // ドロワーの項目名も辞書から取得
+                      Colors.indigoAccent,
+                      () {
+                        Navigator.pop(context);
+                        // ★ lang を渡す
+                        ShareQrDialog.show(
+                          context,
+                          replyService.themeColor,
+                          lang,
+                        );
                       },
                     ),
                     _buildDrawerItem(

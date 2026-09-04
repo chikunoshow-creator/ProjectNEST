@@ -27,20 +27,21 @@ class _WelcomeViewState extends State<WelcomeView> {
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
-    final themeColor = widget.replyService.themeColor; // ★ 現在のテーマ色を取得
+    final themeColor = widget.replyService.themeColor;
     bool isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
-      backgroundColor: widget.replyService.scaffoldBg, // ★ 背景色もテーマ連動
+      backgroundColor: widget.replyService.scaffoldBg,
       body: Stack(
         children: [
           Center(
             child: Stack(
               alignment: Alignment.bottomCenter,
               children: [
+                // 新しい命名規則に対応 (性格ID_f.webp)
                 _buildChar(
                   "ツンデレ",
-                  "assets/images/kaede_normal.webp", // sayo_normal.png -> kaede_normal.webp
+                  "assets/images/tsundere_f.webp",
                   _selectedP == "ツンデレ"
                       ? Alignment.bottomCenter
                       : const Alignment(-2.0, 1.0),
@@ -48,7 +49,7 @@ class _WelcomeViewState extends State<WelcomeView> {
                 ),
                 _buildChar(
                   "クールなお姉さん",
-                  "assets/images/shizuru_normal.webp", // goki_normal.png -> shizuru_normal.webp
+                  "assets/images/cool_f.webp",
                   _selectedP == "クールなお姉さん"
                       ? Alignment.bottomCenter
                       : const Alignment(2.0, 1.0),
@@ -56,7 +57,7 @@ class _WelcomeViewState extends State<WelcomeView> {
                 ),
                 _buildChar(
                   "甘えん坊",
-                  "assets/images/hina_normal.webp", // hau_normal.png -> hina_normal.webp
+                  "assets/images/clingy_f.webp",
                   _selectedP == "甘えん坊"
                       ? Alignment.bottomCenter
                       : (_selectedP == "ツンデレ"
@@ -86,10 +87,10 @@ class _WelcomeViewState extends State<WelcomeView> {
                   BoxShadow(
                     color: themeColor.withValues(alpha: 0.1),
                     blurRadius: 20,
-                  ), // ★ 影の色もテーマ連動
+                  ),
                 ],
               ),
-              child: _buildStep(lang, themeColor), // ★ 色を渡す
+              child: _buildStep(lang, themeColor),
             ),
           ),
         ],
@@ -122,12 +123,12 @@ class _WelcomeViewState extends State<WelcomeView> {
   Widget _buildStep(String lang, Color themeColor) {
     if (_step == 0) return _stepWelcome(lang, themeColor);
     if (_step == 1) return _stepName(lang, themeColor);
-    if (_step == 2) return _stepTheme(lang, themeColor); // ★ 追加ステップ
+    if (_step == 2) return _stepTheme(lang, themeColor);
     if (_step == 3) return _stepPersonality(lang, themeColor);
     return _stepConfig(lang, themeColor);
   }
 
-  // --- 各ステップのデザイン ---
+  // --- 各ステップのデザイン (変更なし) ---
 
   Widget _stepWelcome(String lang, Color themeColor) {
     return Column(
@@ -193,7 +194,6 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  // ★ 新設：テーマカラー選択ステップ
   Widget _stepTheme(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -226,26 +226,19 @@ class _WelcomeViewState extends State<WelcomeView> {
   }
 
   Widget _themeOption(String themeKey, Color color) {
-    // 判定を直接ここで行う
     bool isSelected = widget.replyService.selectedTheme == themeKey;
-
     return InkWell(
       onTap: () async {
-        // ★ 修正：テーマの設定が終わるのを待ってから、setState で画面全体を強制的に描き直す
         await widget.replyService.setTheme(themeKey);
-        if (mounted) {
-          setState(() {});
-        }
+        if (mounted) setState(() {});
       },
       child: AnimatedContainer(
-        // AnimatedContainerにすると変化がスムーズになります
         duration: const Duration(milliseconds: 200),
         width: 80,
         height: 80,
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          // 選択時の枠線をより太くはっきりさせる
           border: isSelected ? Border.all(color: Colors.black, width: 4) : null,
           boxShadow: [
             BoxShadow(
@@ -381,7 +374,7 @@ class _WelcomeViewState extends State<WelcomeView> {
         _nameCtrl.text != "あなた" &&
         _nameCtrl.text != "Guest";
     bool hasKey = _keyCtrl.text.isNotEmpty;
-    if (hasName && hasKey) _step = 3; // ★ ステップ数が増えたので 2 -> 3 に変更
+    if (hasName && hasKey) _step = 3;
   }
 
   void _finish() async {
@@ -390,9 +383,10 @@ class _WelcomeViewState extends State<WelcomeView> {
           ? (widget.replyService.language == 'ja' ? "あなた" : "Guest")
           : _nameCtrl.text,
       nestName: widget.replyService.personalityNames[_selectedP]!,
+      // ここも内部ID刷新に合わせて整理
       nestAliases: _selectedP == "甘えん坊"
-          ? "ひな"
-          : (_selectedP == "ツンデレ" ? "かえで" : "しずる"),
+          ? "ひな,ひなちゃん,陽菜"
+          : (_selectedP == "ツンデレ" ? "かえで,かえでちゃん,楓" : "しずる,しずるさん,静流"),
       p: _selectedP,
       apiKey: _keyCtrl.text,
     );

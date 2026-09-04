@@ -117,6 +117,7 @@ const Map<String, String> en = {
   'dislikes_title': '💔 Dislikes',
   'today_diary_btn': "Today's Diary",
   'diary': 'Memories Diary',
+  'share_nest': 'Share NEST',
 
   // --- Guide ---
   'guide_title': 'How to get API Key',
@@ -293,4 +294,8 @@ const Map<String, String> en = {
   'memory_context':
       '[Facts you know about your partner]\n{memories}\nNaturally use this information to make the conversation more personal.',
   'theme_title': 'Choose a theme color',
+
+  // --- share NEST ---
+  'share_title': 'Share NEST',
+  'share_desc': 'Scan this QR code to\nshare Project NEST',
 };

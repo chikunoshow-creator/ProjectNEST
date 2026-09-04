@@ -5,16 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/app_constants.dart';
 import '../models/diary_entry.dart';
 import 'ai_service.dart';
-import 'translation_service.dart'; // ★追加
-import 'reply_storage_service.dart'; // ★この1行を追加してください！
-import 'package:flutter/material.dart'; // ★これがないと Colors でエラーが出ます
-import '../models/nest_profile.dart'; // ★これを追加
+import 'translation_service.dart';
+import 'reply_storage_service.dart';
+import 'package:flutter/material.dart';
+import '../models/nest_profile.dart';
+import 'prompt_service.dart';
 
 class ReplyService {
   final AiService _aiService = AiService();
-  final ReplyStorageService _storage = ReplyStorageService(); // ★追加
+  final ReplyStorageService _storage = ReplyStorageService();
   AiService get aiService => _aiService;
-  final String appVersion = "1.156";
+  final String appVersion = "1.157";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -32,12 +33,11 @@ class ReplyService {
   String selectedBg = "default";
   bool isFirstLaunch = true;
   String startDate = "";
-  String selectedTheme = "pink"; // デフォルトはピンク
+  String selectedTheme = "pink";
 
-  // 記憶保持用
   List<String> _userMemories = [];
-
   Map<String, dynamic>? _personalityData;
+
   final Map<String, String> personalityNames = {
     "甘えん坊": "ひな",
     "クールなお姉さん": "しずる",
@@ -48,13 +48,32 @@ class ReplyService {
     "クールなお姉さん": "Shizuru",
     "ツンデレ": "Kaede",
   };
+
   NestProfile partnerProfile = NestProfile();
 
   ReplyService() {
     String deviceLang = PlatformDispatcher.instance.locale.languageCode;
     language = (deviceLang == 'ja') ? 'ja' : 'en';
   }
-  // 親密度ランクの判定
+
+  // --- 性格・性別ID管理システム ---
+
+  // 性格に応じた英語IDを取得
+  String get charId {
+    if (personality == "ツンデレ") return "tsundere";
+    if (personality == "クールなお姉さん") return "cool";
+    return "clingy";
+  }
+
+  // 性別に応じた接尾辞（f または m）を取得
+  String get genderKey =>
+      (partnerProfile.nestGender == Gender.male) ? "m" : "f";
+
+  // 【最重要】最終的なアセット検索キー (例: clingy_f)
+  String get charKey => "${charId}_$genderKey";
+
+  // --- 基本ゲッター ---
+
   String get intimacyRank {
     if (intimacyScore >= 1000) return "S";
     if (intimacyScore >= 500) return "A";
@@ -64,11 +83,10 @@ class ReplyService {
     return "E";
   }
 
-  // 累計メッセージ数（現在の履歴ベース）
   int get messageCount => _history.where((m) => m['role'] == 'user').length;
-  // --- Getters ---
   List<Map<String, String>> getHistory() => _history;
   List<DiaryEntry> getDiaries() => _diaries;
+
   String get selfIntro => language == 'en'
       ? (_personalityData?['self_intro_en'] ?? "")
       : (_personalityData?['self_intro'] ?? "");
@@ -97,13 +115,6 @@ class ReplyService {
     }
   }
 
-  // 内部IDの刷新
-  String get charKey => (personality == "ツンデレ")
-      ? "kaede" // sayo -> kaede
-      : (personality == "クールなお姉さん")
-      ? "shizuru" // goki -> shizuru
-      : "hina"; // hau -> hina
-
   DateTime get nestToday {
     DateTime now = DateTime.now();
     return (now.hour < 3) ? now.subtract(const Duration(days: 1)) : now;
@@ -116,7 +127,8 @@ class ReplyService {
     return nt.year > last.year || nt.month > last.month || nt.day > last.day;
   }
 
-  // --- 読み込み ---
+  // --- データ読み書き ---
+
   Future<void> loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
     language =
@@ -141,7 +153,6 @@ class ReplyService {
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
     startDate = prefs.getString(AppConstants.startDateKey) ?? "";
 
-    // ★ メモリーの読み込みを追加
     final String? savedMemories = prefs.getString(AppConstants.userMemoriesKey);
     if (savedMemories != null) {
       _userMemories = List<String>.from(jsonDecode(savedMemories));
@@ -163,24 +174,12 @@ class ReplyService {
     await _loadPersonalityJson();
   }
 
-  // lib/services/reply_service.dart 内
-
-  Color get themeColor {
-    if (selectedTheme == "blue") {
-      // lightBlueAccent よりも少し深みのある blueAccent に変更
-      return Colors.blueAccent;
-    }
-    return Colors.pinkAccent;
-  }
-
-  // 背景やカードのうっすらした色
+  Color get themeColor =>
+      (selectedTheme == "blue") ? Colors.blueAccent : Colors.pinkAccent;
   Color get themeSubColor => themeColor.withValues(alpha: 0.05);
-  // 背景用の超薄い色（0xFFFFF5F5 の代わり）
   Color get scaffoldBg => themeColor.withValues(alpha: 0.05);
-  // カードや項目の背景用の少し薄い色
   Color get itemBg => themeColor.withValues(alpha: 0.1);
 
-  // ★ 正しい位置（クラスの直下）に generateDiary を配置
   Future<DiaryEntry> generateDiary() async {
     String historyText = _history
         .map((m) {
@@ -189,7 +188,6 @@ class ReplyService {
         })
         .join("\n");
 
-    // 記憶抽出
     List<String> newMemories = await _aiService.extractMemories(
       apiKey: groqApiKey,
       personality: personality,
@@ -204,15 +202,13 @@ class ReplyService {
       jsonEncode(_userMemories),
     );
 
-    // 記憶を注入して日記生成
     String memoryNote = "【あなたが気づいたパートナーのこと】\n${_userMemories.join('、')}\n\n";
 
-    // lib/services/reply_service.dart 内の generateDiary メソッドの一部
     final Map<String, String> diaryData = await _aiService.generateDiaryContent(
       apiKey: groqApiKey,
       personality: personality,
-      nestName: nestName, // ★追加
-      userName: userName, // ★追加
+      nestName: nestName,
+      userName: userName,
       historyText: memoryNote + historyText,
       language: language,
     );
@@ -228,7 +224,7 @@ class ReplyService {
 
   Future<void> setTheme(String themeName) async {
     selectedTheme = themeName;
-    final prefs = await (await SharedPreferences.getInstance());
+    final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.themeKey, themeName);
   }
 
@@ -240,18 +236,18 @@ class ReplyService {
       final data = jsonDecode(response);
       _personalityData = (data['personalities'] ?? data)[personality];
     } catch (e) {
-      print("JSON Load Error: $e");
+      debugPrint("JSON Load Error: $e");
     }
   }
 
-  // --- 設定変更系 ---
+  // --- 設定変更・リセット ---
+
   Future<void> setLanguage(String lang) async {
     language = lang;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.languageKey, lang);
   }
 
-  // --- リセット系 ---
   Future<void> clearChatOnly() async {
     _history = [];
     final prefs = await SharedPreferences.getInstance();
@@ -263,7 +259,7 @@ class ReplyService {
     final prefs = await SharedPreferences.getInstance();
     _history = [];
     _diaries = [];
-    _userMemories = []; // 記憶も消去
+    _userMemories = [];
     intimacyScore = 0;
     isFirstLaunch = true;
     await prefs.setBool(AppConstants.firstLaunchKey, true);
@@ -281,7 +277,8 @@ class ReplyService {
     await loadHistory();
   }
 
-  // --- 会話系 ---
+  // --- 会話ロジック ---
+
   Future<void> addFirstMessage(String text) async {
     _history.add({"role": "assistant", "content": text});
     final prefs = await SharedPreferences.getInstance();
@@ -302,33 +299,28 @@ class ReplyService {
   Future<String> createReply(String msg) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. 性格Roleの決定
-    String pKey = (personality == "甘えん坊")
-        ? 'role_sweet'
-        : (personality == "クールなお姉さん" ? 'role_cool' : 'role_tsun');
-    String personalityRole = T.get(pKey, language);
-
-    // 2. 親密度による態度の決定
-    String intimacyInstruction = (intimacyScore < 50)
-        ? T.get('intimacy_low', language)
-        : (intimacyScore < 200
-              ? T.get('intimacy_mid', language)
-              : T.get('intimacy_high', language));
-
-    // ★ 3. 記憶（メモリー）の注入
     String memoryBlock = "";
     if (_userMemories.isNotEmpty) {
-      // 記憶リストを「、」で繋いでプロンプトにはめ込む
       memoryBlock = T
           .get('memory_context', language)
           .replaceAll('{memories}', _userMemories.join('、'));
     }
 
-    // 4. システムプロンプトの構築（memoryBlockを合体）
-    String systemPrompt =
-        "あなたの名前は$nestName、相手は$userNameです。 "
-        "$personalityRole $intimacyInstruction $memoryBlock "
-        "${T.get('guardrails', language)} ${T.get('format_rule', language)}";
+    String basePrompt = PromptService.buildSystemPrompt(
+      profile: partnerProfile,
+      nestName: nestName,
+      userName: userName,
+      intimacyScore: intimacyScore,
+      lang: language,
+    );
+
+    String systemPrompt = basePrompt;
+    if (memoryBlock.isNotEmpty) {
+      systemPrompt = basePrompt.replaceFirst(
+        T.get('guardrails', language),
+        "$memoryBlock ${T.get('guardrails', language)}",
+      );
+    }
 
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
@@ -337,7 +329,6 @@ class ReplyService {
       userMessage: msg,
     );
 
-    // 救出ロジック ＆ 親密度ペナルティ
     if (reply == "NEST_ERROR") {
       intimacyScore = (intimacyScore > 5) ? intimacyScore - 5 : 0;
       await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
@@ -347,7 +338,6 @@ class ReplyService {
       return T.get(errorKey, language);
     }
 
-    // 正常な場合は親密度アップ
     intimacyScore++;
     await prefs.setInt(AppConstants.intimacyKey, intimacyScore);
 
@@ -358,66 +348,16 @@ class ReplyService {
     return reply;
   }
 
-  Future<void> saveDiary(DiaryEntry entry) async {
-    int idx = _diaries.indexWhere(
-      (d) =>
-          d.date.year == entry.date.year &&
-          d.date.month == entry.date.month &&
-          d.date.day == entry.date.day,
-    );
-    if (idx != -1)
-      _diaries[idx] = entry;
-    else
-      _diaries.insert(0, entry);
-    (await SharedPreferences.getInstance()).setString(
-      AppConstants.diariesKey,
-      jsonEncode(_diaries.map((e) => e.toJson()).toList()),
-    );
-  }
-
-  Future<void> updateSettings({
-    required String name,
-    required String nestName,
-    required String nestAliases,
-    required String p,
-    required String apiKey,
-    String birthday = "",
-    String food = "",
-    String job = "",
-  }) async {
-    // 1. メモリ上の変数を更新
-    userName = name;
-    this.nestName = nestName;
-    this.nestAliases = nestAliases;
-    personality = p;
-    groqApiKey = apiKey;
-    userBirthday = birthday;
-    userFood = food;
-    userJob = job;
-
-    // 2. ストレージサービスに丸投げ
-    await _storage.saveAllSettings(exportAllData());
-    await _loadPersonalityJson();
-  }
-
-  Future<void> completeSetup() async {
-    isFirstLaunch = false;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppConstants.firstLaunchKey, false);
-    if (startDate.isEmpty) {
-      startDate = DateTime.now().toIso8601String();
-      await prefs.setString(AppConstants.startDateKey, startDate);
-    }
-  }
+  // --- アルバム・背景 ---
 
   List<Map<String, dynamic>> getAllBackgrounds() {
-    String cp = charKey;
+    String cp = charKey; // 例: clingy_f
     bool isEn = (language == 'en');
     return [
       {
         "id": "room",
         "name": isEn ? "Usual Room" : "いつものお部屋",
-        "path": "assets/images/bg_room_$cp.webp", // .png -> .webp
+        "path": "assets/images/bg_room_$cp.webp",
         "minScore": 0,
       },
       {
@@ -441,6 +381,58 @@ class ReplyService {
     ];
   }
 
+  // --- その他設定 ---
+
+  Future<void> saveDiary(DiaryEntry entry) async {
+    int idx = _diaries.indexWhere(
+      (d) =>
+          d.date.year == entry.date.year &&
+          d.date.month == entry.date.month &&
+          d.date.day == entry.date.day,
+    );
+    if (idx != -1) {
+      _diaries[idx] = entry;
+    } else {
+      _diaries.insert(0, entry);
+    }
+    (await SharedPreferences.getInstance()).setString(
+      AppConstants.diariesKey,
+      jsonEncode(_diaries.map((e) => e.toJson()).toList()),
+    );
+  }
+
+  Future<void> updateSettings({
+    required String name,
+    required String nestName,
+    required String nestAliases,
+    required String p,
+    required String apiKey,
+    String birthday = "",
+    String food = "",
+    String job = "",
+  }) async {
+    userName = name;
+    this.nestName = nestName;
+    this.nestAliases = nestAliases;
+    personality = p;
+    groqApiKey = apiKey;
+    userBirthday = birthday;
+    userFood = food;
+    userJob = job;
+    await _storage.saveAllSettings(exportAllData());
+    await _loadPersonalityJson();
+  }
+
+  Future<void> completeSetup() async {
+    isFirstLaunch = false;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.firstLaunchKey, false);
+    if (startDate.isEmpty) {
+      startDate = DateTime.now().toIso8601String();
+      await prefs.setString(AppConstants.startDateKey, startDate);
+    }
+  }
+
   Future<void> setBackground(String bg) async {
     selectedBg = bg;
     final prefs = await SharedPreferences.getInstance();
@@ -448,6 +440,7 @@ class ReplyService {
   }
 
   // --- バックアップ・復元 ---
+
   Map<String, dynamic> exportAllData() {
     return {
       'userName': userName,
@@ -490,7 +483,6 @@ class ReplyService {
         .map((e) => DiaryEntry.fromJson(e))
         .toList();
     startDate = data['startDate'] ?? "";
-
     await prefs.setString(AppConstants.userKey, userName);
     await prefs.setString(AppConstants.nestNameKey, nestName);
     await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
@@ -518,12 +510,8 @@ class ReplyService {
     await prefs.setString(AppConstants.backupDateKey, now);
   }
 
-  // 内部スロットに保存
-  Future<void> saveToInternalSlot() async {
-    await _storage.saveToInternalSlot(exportAllData());
-  }
-
-  // 内部スロットから復元
+  Future<void> saveToInternalSlot() async =>
+      await _storage.saveToInternalSlot(exportAllData());
   Future<bool> restoreFromInternalSlot() async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString(AppConstants.backupDataKey);
@@ -534,13 +522,10 @@ class ReplyService {
     return false;
   }
 
-  // 性格のフルネーム（ひな / Hina など）を取得
   String get fullPersonalityName => language == 'en'
       ? (personalityNamesEn[personality] ?? "")
       : (personalityNames[personality] ?? "");
 
-  // 性格ごとの詳細説明文（WelcomeViewなどで使用）を取得
-  // 修正後：1行で完結
   String getSpecificDescription(String p, String lang) {
     final key = (p == "甘えん坊")
         ? 'desc_sweet'
