@@ -298,4 +298,9 @@ const Map<String, String> en = {
   // --- share NEST ---
   'share_title': 'Share NEST',
   'share_desc': 'Scan this QR code to\nshare Project NEST',
+
+  'bg_room': 'Usual Room',
+  'bg_cafe': 'Afternoon Cafe',
+  'bg_park': 'Amusement Park',
+  'bg_flower': 'Flower Field',
 };

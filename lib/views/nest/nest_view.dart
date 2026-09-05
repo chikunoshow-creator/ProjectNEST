@@ -48,10 +48,16 @@ class _NestViewState extends State<NestView> {
                 : (_isProfileVisible
                       ? const Alignment(-0.3, 1.0)
                       : Alignment.bottomCenter),
-            child: Image.asset(
-              "assets/images/${charPrefix}_normal.webp",
-              height: isMobile ? screenHeight * 0.80 : screenHeight * 0.90,
-              fit: BoxFit.contain,
+            child: RepaintBoundary(
+              // Web最適化のためにRepaintBoundaryを追加推奨
+              child: Image.asset(
+                "assets/images/$charPrefix.webp", // _normal を削除
+                height: isMobile ? screenHeight * 0.80 : screenHeight * 0.90,
+                fit: BoxFit.contain,
+                // 画像が読み込めない時のためのエラーハンドリングを追加しておくと安全です
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

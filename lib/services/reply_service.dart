@@ -15,7 +15,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService();
   AiService get aiService => _aiService;
-  final String appVersion = "1.157";
+  final String appVersion = "1.158";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -352,35 +352,35 @@ class ReplyService {
 
   List<Map<String, dynamic>> getAllBackgrounds() {
     String cp = charKey; // 例: clingy_f
-    bool isEn = (language == 'en');
+    // bool isEn = (language == 'en'); // ★ これは不要になります
+
     return [
       {
         "id": "room",
-        "name": isEn ? "Usual Room" : "いつものお部屋",
+        "name": T.get('bg_room', language),
         "path": "assets/images/bg_room_$cp.webp",
         "minScore": 0,
       },
       {
         "id": "cafe",
-        "name": isEn ? "Afternoon Cafe" : "昼下がりのカフェ",
+        "name": T.get('bg_cafe', language),
         "path": "assets/images/album/cafe_$cp.webp",
         "minScore": 10,
       },
       {
         "id": "park",
-        "name": isEn ? "Amusement Park" : "ドキドキ遊園地",
+        "name": T.get('bg_park', language),
         "path": "assets/images/album/amusement_$cp.webp",
         "minScore": 30,
       },
       {
         "id": "flower",
-        "name": isEn ? "Flower Field" : "お花畑の散歩",
+        "name": T.get('bg_flower', language),
         "path": "assets/images/album/flower_$cp.webp",
         "minScore": 50,
       },
     ];
   }
-
   // --- その他設定 ---
 
   Future<void> saveDiary(DiaryEntry entry) async {

@@ -278,4 +278,9 @@ const Map<String, String> ja = {
   // --- share NEST ---
   'share_title': 'NESTを教える',
   'share_desc': 'このQRコードをスキャンして\nProject NESTをシェアしよう',
+
+  'bg_room': 'いつものお部屋',
+  'bg_cafe': '昼下がりのカフェ',
+  'bg_park': 'ドキドキ遊園地',
+  'bg_flower': 'お花畑の散歩',
 };
