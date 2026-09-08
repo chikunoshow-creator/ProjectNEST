@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/reply_service.dart';
 import '../services/translation_service.dart';
 import '../widgets/groq_guide.dart';
+import '../models/nest_profile.dart'; // ★ Gender, Relationshipのために追加
 
 class WelcomeView extends StatefulWidget {
   final ReplyService replyService;
@@ -22,6 +23,10 @@ class _WelcomeViewState extends State<WelcomeView> {
   int _step = 0;
   String _selectedP = "甘えん坊";
 
+  // ★ Ver 1.200 新規項目
+  Gender _selectedUserGender = Gender.male;
+  Relationship _selectedRel = Relationship.lover;
+
   void _next() => setState(() => _step++);
 
   @override
@@ -38,7 +43,6 @@ class _WelcomeViewState extends State<WelcomeView> {
             child: Stack(
               alignment: Alignment.bottomCenter,
               children: [
-                // 新しい命名規則に対応 (性格ID_f.webp)
                 _buildChar(
                   "ツンデレ",
                   "assets/images/tsundere_f.webp",
@@ -77,17 +81,14 @@ class _WelcomeViewState extends State<WelcomeView> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: 380,
+              height: 420, // ★ ステップ追加に伴い少し高さを調整（380 -> 420）
               margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
-                  BoxShadow(
-                    color: themeColor.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                  ),
+                  BoxShadow(color: themeColor.withOpacity(0.1), blurRadius: 20),
                 ],
               ),
               child: _buildStep(lang, themeColor),
@@ -122,14 +123,14 @@ class _WelcomeViewState extends State<WelcomeView> {
 
   Widget _buildStep(String lang, Color themeColor) {
     if (_step == 0) return _stepWelcome(lang, themeColor);
-    if (_step == 1) return _stepName(lang, themeColor);
-    if (_step == 2) return _stepTheme(lang, themeColor);
-    if (_step == 3) return _stepPersonality(lang, themeColor);
+    if (_step == 1) return _stepNameAndGender(lang, themeColor); // ★ 名前と性別
+    if (_step == 2) return _stepRelationship(lang, themeColor); // ★ 関係性選択
+    if (_step == 3) return _stepTheme(lang, themeColor);
+    if (_step == 4) return _stepPersonality(lang, themeColor);
     return _stepConfig(lang, themeColor);
   }
 
-  // --- 各ステップのデザイン (変更なし) ---
-
+  // --- ステップ：ウェルカム ---
   Widget _stepWelcome(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -161,7 +162,8 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
-  Widget _stepName(String lang, Color themeColor) {
+  // --- ステップ1：名前と性別 ---
+  Widget _stepNameAndGender(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -169,19 +171,39 @@ class _WelcomeViewState extends State<WelcomeView> {
           T.get('your_name_ask', lang),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 15),
         TextField(
           controller: _nameCtrl,
           decoration: InputDecoration(
             labelText: T.get('name_label', lang),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(15),
-              borderSide: BorderSide(color: themeColor),
-            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 20),
+        Text(
+          T.get('user_gender_label', lang),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _genderChip(Gender.male, T.get('gender_male', lang), themeColor),
+            const SizedBox(width: 8),
+            _genderChip(
+              Gender.female,
+              T.get('gender_female', lang),
+              themeColor,
+            ),
+            const SizedBox(width: 8),
+            _genderChip(Gender.other, T.get('gender_other', lang), themeColor),
+          ],
+        ),
+        const SizedBox(height: 30),
         ElevatedButton(
           onPressed: _next,
           style: ElevatedButton.styleFrom(
@@ -194,6 +216,98 @@ class _WelcomeViewState extends State<WelcomeView> {
     );
   }
 
+  Widget _genderChip(Gender gender, String label, Color themeColor) {
+    bool isSelected = _selectedUserGender == gender;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (v) => setState(() => _selectedUserGender = gender),
+      selectedColor: themeColor.withOpacity(0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? themeColor : Colors.black87,
+        fontSize: 12,
+      ),
+    );
+  }
+
+  // --- ステップ2：関係性選択 (NEW) ---
+  Widget _stepRelationship(String lang, Color themeColor) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          T.get('relationship_label', lang),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 15),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _relRadio(
+              Relationship.lover,
+              T.get('label_rel_lover', lang),
+              themeColor,
+            ),
+            const SizedBox(width: 20),
+            _relRadio(
+              Relationship.bestFriend,
+              T.get('label_rel_bestFriend', lang),
+              themeColor,
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: themeColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: themeColor.withOpacity(0.1)),
+          ),
+          child: Text(
+            _selectedRel == Relationship.lover
+                ? T.get('desc_rel_lover', lang)
+                : T.get('desc_rel_bestFriend', lang),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
+        ElevatedButton(
+          onPressed: _next,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: themeColor,
+            foregroundColor: Colors.white,
+          ),
+          child: Text(T.get('next', lang)),
+        ),
+      ],
+    );
+  }
+
+  Widget _relRadio(Relationship rel, String label, Color themeColor) {
+    return InkWell(
+      onTap: () => setState(() => _selectedRel = rel),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Radio<Relationship>(
+            value: rel,
+            groupValue: _selectedRel,
+            activeColor: themeColor,
+            onChanged: (v) => setState(() => _selectedRel = v!),
+          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // --- 以降、既存ステップの整理 ---
+
   Widget _stepTheme(String lang, Color themeColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -202,7 +316,7 @@ class _WelcomeViewState extends State<WelcomeView> {
           T.get('theme_title', lang),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 25),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -211,7 +325,7 @@ class _WelcomeViewState extends State<WelcomeView> {
             _themeOption("blue", Colors.blueAccent),
           ],
         ),
-        const SizedBox(height: 50),
+        const SizedBox(height: 35),
         ElevatedButton(
           onPressed: _next,
           style: ElevatedButton.styleFrom(
@@ -242,9 +356,8 @@ class _WelcomeViewState extends State<WelcomeView> {
           border: isSelected ? Border.all(color: Colors.black, width: 4) : null,
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.4),
+              color: color.withOpacity(0.4),
               blurRadius: isSelected ? 15 : 5,
-              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -274,7 +387,7 @@ class _WelcomeViewState extends State<WelcomeView> {
         ),
         const SizedBox(height: 20),
         DropdownButtonFormField<String>(
-          initialValue: _selectedP,
+          value: _selectedP,
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           ),
@@ -289,7 +402,7 @@ class _WelcomeViewState extends State<WelcomeView> {
           width: double.infinity,
           height: 80,
           decoration: BoxDecoration(
-            color: themeColor.withValues(alpha: 0.05),
+            color: themeColor.withOpacity(0.05),
             borderRadius: BorderRadius.circular(10),
           ),
           child: SingleChildScrollView(
@@ -324,7 +437,7 @@ class _WelcomeViewState extends State<WelcomeView> {
           T.get('config_title', lang),
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 20),
         TextField(
           controller: _keyCtrl,
           decoration: InputDecoration(
@@ -369,12 +482,16 @@ class _WelcomeViewState extends State<WelcomeView> {
     super.initState();
     _nameCtrl.text = widget.replyService.userName;
     _keyCtrl.text = widget.replyService.groqApiKey;
+    // ★ リセット時でも「前回の設定」を初期値として表示するために同期
+    _selectedUserGender = widget.replyService.partnerProfile.userGender;
+    _selectedRel = widget.replyService.partnerProfile.relationship;
+
     bool hasName =
         _nameCtrl.text.isNotEmpty &&
         _nameCtrl.text != "あなた" &&
         _nameCtrl.text != "Guest";
     bool hasKey = _keyCtrl.text.isNotEmpty;
-    if (hasName && hasKey) _step = 3;
+    if (hasName && hasKey) _step = 1; // ★ ステップ数増加に合わせて調整
   }
 
   void _finish() async {
@@ -382,23 +499,26 @@ class _WelcomeViewState extends State<WelcomeView> {
       name: _nameCtrl.text.isEmpty
           ? (widget.replyService.language == 'ja' ? "あなた" : "Guest")
           : _nameCtrl.text,
+      userGender: _selectedUserGender, // ★ 保存
       nestName: widget.replyService.personalityNames[_selectedP]!,
-      // ここも内部ID刷新に合わせて整理
       nestAliases: _selectedP == "甘えん坊"
           ? "ひな,ひなちゃん,陽菜"
           : (_selectedP == "ツンデレ" ? "かえで,かえでちゃん,楓" : "しずる,しずるさん,静流"),
       p: _selectedP,
       apiKey: _keyCtrl.text,
+      nestGender: Gender.female, // ★ 現時点では女性固定
+      relationship: _selectedRel, // ★ 保存
     );
     await widget.replyService.addFirstMessage(widget.replyService.selfIntro);
     await widget.replyService.completeSetup();
     if (mounted) widget.onComplete();
   }
 
+  // 言語ボタンのデザイン等は変更なし
   Widget _buildLangBtn(String lang, Color themeColor) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8),
+        color: Colors.white.withOpacity(0.8),
         borderRadius: BorderRadius.circular(20),
       ),
       child: TextButton.icon(
