@@ -72,6 +72,28 @@
       }
     };
   </script>
+  <!-- ★ ここから追加：SNS画像シェア用ヘルパー -->
+  <script>
+    window.shareFile = async function (file, title, text) {
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: title,
+            text: text,
+          });
+          return true;
+        } else {
+          return false;
+        }
+      } catch (error) {
+        console.error('Share failed:', error);
+        return false;
+      }
+    };
+  </script>
+  <!-- ★ ここまで追加 -->
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 
