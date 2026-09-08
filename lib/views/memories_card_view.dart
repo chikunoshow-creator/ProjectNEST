@@ -1,4 +1,5 @@
 import 'dart:html' as html;
+import 'dart:js' as js; // ★ JS呼び出しのために追加
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -25,104 +26,129 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
         .replaceAll('{days}', widget.replyService.daysTogether.toString());
   }
 
-  Future<void> _captureAndSave(
-    BuildContext context,
-    String lang, {
-    bool isSharing = false,
-  }) async {
+  // --- 画像キャプチャの共通処理（フリーズ対策版） ---
+  Future<Uint8List?> _capturePng() async {
     try {
-      final themeColor = widget.replyService.themeColor; // ★ 追加
+      // ★ 描画（白い背景Containerなど）を確実に完了させるための待機
       await Future.delayed(const Duration(milliseconds: 100));
 
       RenderRepaintBoundary? boundary =
           _cardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) return;
 
+      // 描画オブジェクトが見つからない場合は即座に終了
+      if (boundary == null) {
+        debugPrint("Boundary is null");
+        return null;
+      }
+
+      // キャプチャ実行
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );
-      if (byteData == null) return;
-      Uint8List pngBytes = byteData.buffer.asUint8List();
-
-      final blob = html.Blob([pngBytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute(
-          "download",
-          "NEST_Certificate_${widget.replyService.displayName}.webp",
-        )
-        ..click();
-      html.Url.revokeObjectUrl(url);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isSharing
-                  ? (lang == 'ja'
-                        ? "画像を保存したよ！SNSに添付してね ✨"
-                        : "Image saved! Please attach it ✨")
-                  : T.get('backup_success', lang),
-            ),
-            backgroundColor: themeColor, // ★ ピンク固定からテーマ連動に変更
-          ),
-        );
-      }
+      return byteData?.buffer.asUint8List();
     } catch (e) {
       debugPrint("Capture Error: $e");
+      return null;
     }
   }
 
-  Future<void> _captureAndShareSns(
-    String platform,
-    String lang,
-    BuildContext context,
-  ) async {
-    await _captureAndSave(context, lang, isSharing: true);
-    await Future.delayed(const Duration(milliseconds: 500));
-    final text = _getShareText(lang);
-    String url = "";
-    switch (platform) {
-      case 'x':
-        url =
-            "https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}";
-        break;
-      case 'line':
-        url = "https://line.me/R/msg/text/?${Uri.encodeComponent(text)}";
-        break;
-      case 'whatsapp':
-        url = "https://wa.me/?text=${Uri.encodeComponent(text)}";
-        break;
-      case 'discord':
-        Clipboard.setData(ClipboardData(text: text));
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(T.get('share_discord_done', lang))),
-          );
-        url = "https://discord.com/channels/@me";
-        break;
+  // --- 1. システム共有を実行するメインロジック ---
+  // --- 1. システム共有を実行するメインロジック（安全版） ---
+  Future<void> _shareMemories(BuildContext context, String lang) async {
+    // キャプチャ開始
+    Uint8List? pngBytes = await _capturePng();
+    if (pngBytes == null) return;
+
+    try {
+      // ファイルオブジェクトの作成
+      final blob = html.Blob([pngBytes], 'image/png');
+      final fileName = "NEST_Card_${widget.replyService.displayName}.png";
+      final file = html.File([blob], fileName, {'type': 'image/png'});
+
+      final title = "Project NEST";
+      final text = _getShareText(lang);
+
+      // ★ JS呼び出し：結果を動的に受け取り、エラーを防止
+      final result = await js.context.callMethod('shareFile', [
+        file,
+        title,
+        text,
+      ]);
+
+      // JS側で false が返された（シェア非対応）場合は保存処理へ
+      if (result == false) {
+        await _saveImageLocally(pngBytes, context, lang, fallback: true);
+      }
+    } catch (e) {
+      debugPrint("Share Logic Error: $e");
+      // ★ 万が一JS連携でエラーが起きても、フリーズさせずに保存処理を実行
+      await _saveImageLocally(pngBytes, context, lang, fallback: true);
     }
-    if (url.isNotEmpty) html.window.open(url, "_blank");
+  }
+
+  // --- 2. 純粋な画像保存（ダウンロード） ---
+  Future<void> _saveImageLocally(
+    Uint8List? bytes,
+    BuildContext context,
+    String lang, {
+    bool fallback = false,
+  }) async {
+    Uint8List? pngBytes = bytes ?? await _capturePng();
+    if (pngBytes == null) return;
+
+    final blob = html.Blob([pngBytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute(
+        "download",
+        "NEST_Card_${widget.replyService.displayName}.png",
+      )
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            fallback
+                ? T.get('share_failed_fallback', lang)
+                : T.get('backup_success', lang),
+          ),
+          backgroundColor: widget.replyService.themeColor,
+        ),
+      );
+    }
+  }
+
+  // --- 3. テキストコピー ---
+  void _copyText(BuildContext context, String lang) {
+    Clipboard.setData(ClipboardData(text: _getShareText(lang)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(T.get('card_copy_success', lang)),
+        backgroundColor: widget.replyService.themeColor,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final lang = widget.replyService.language;
     final charKey = widget.replyService.charKey;
-    final themeColor = widget.replyService.themeColor; // ★ 追加
-    final scaffoldBg = themeColor.withValues(alpha: 0.05); // ★ 追加
+    final themeColor = widget.replyService.themeColor;
+    final scaffoldBg = themeColor.withOpacity(0.05);
 
     return Scaffold(
-      backgroundColor: scaffoldBg, // ★ 背景色連動
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
           T.get('card_title', lang),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
+        backgroundColor: Colors.white.withOpacity(0.9),
         elevation: 0,
-        foregroundColor: themeColor, // ★ 文字色連動
+        foregroundColor: themeColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: 40),
@@ -131,25 +157,25 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
             Center(
               child: RepaintBoundary(
                 key: _cardKey,
-                child: _buildCardUI(
-                  lang,
-                  charKey,
-                  themeColor,
-                ), // ★ themeColorを渡す
+                // ★ 色のくすみ対策：キャプチャ対象を不透明な白Containerで包む
+                child: Container(
+                  color: Colors.white,
+                  child: _buildCardUI(lang, charKey, themeColor),
+                ),
               ),
             ),
             const SizedBox(height: 40),
-            _buildActionButtons(lang, context, themeColor), // ★ themeColorを渡す
+            _buildNewActionArea(lang, context, themeColor),
           ],
         ),
       ),
     );
   }
 
+  // カードUI自体は美しさを維持（変更なし）
   Widget _buildCardUI(String lang, String charKey, Color themeColor) {
     final rank = widget.replyService.intimacyRank;
     final isRankS = (rank == "S");
-
     String sinceDate = "2024.01.01";
     if (widget.replyService.startDate.isNotEmpty) {
       try {
@@ -170,27 +196,24 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
           end: Alignment.bottomRight,
           colors: isRankS
               ? [
-                  const Color(0xFFFFD700).withValues(alpha: 0.2),
+                  const Color(0xFFFFD700).withOpacity(0.2),
                   Colors.white,
-                  const Color(0xFFDAA520).withValues(alpha: 0.1),
+                  const Color(0xFFDAA520).withOpacity(0.1),
                 ]
-              : [
-                  themeColor.withValues(alpha: 0.15),
-                  Colors.white,
-                ], // ★ 通常時はテーマ色グラデーション
+              : [themeColor.withOpacity(0.15), Colors.white],
         ),
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
           color: isRankS
-              ? const Color(0xFFFFD700).withValues(alpha: 0.5)
+              ? const Color(0xFFFFD700).withOpacity(0.5)
               : Colors.white,
           width: isRankS ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isRankS ? const Color(0xFFFFD700) : themeColor).withValues(
-              alpha: 0.1,
-            ), // ★ 影の色連動
+            color: (isRankS ? const Color(0xFFFFD700) : themeColor).withOpacity(
+              0.1,
+            ),
             blurRadius: 25,
             offset: const Offset(0, 10),
           ),
@@ -204,7 +227,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
             child: Icon(
               Icons.favorite,
               size: 150,
-              color: themeColor.withValues(alpha: 0.03), // ★ 背景ハートの色連動
+              color: themeColor.withOpacity(0.03),
             ),
           ),
           Row(
@@ -247,9 +270,7 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isRankS
-                            ? const Color(0xFFB8860B)
-                            : themeColor, // ★ 名前色連動
+                        color: isRankS ? const Color(0xFFB8860B) : themeColor,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -317,6 +338,145 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
     );
   }
 
+  // --- 新しいアクションエリア：ボタンを整理 ---
+  Widget _buildNewActionArea(
+    String lang,
+    BuildContext context,
+    Color themeColor,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        children: [
+          // 1. メインシェアボタン
+          ElevatedButton.icon(
+            onPressed: () => _shareMemories(context, lang),
+            icon: const Icon(Icons.ios_share_rounded, size: 24),
+            label: Text(
+              T.get('share_memories_btn', lang),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeColor,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 64),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 4,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 2. 対応アイコンガイド
+          // 2. 対応アイコンガイド（ブランドタグ形式）
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                T.get('share_compatible_apps', lang),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.black38,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 4),
+              _brandTag(Icons.close, "X", Colors.black),
+              _brandTag(Icons.chat_bubble, "LINE", const Color(0xFF06C755)),
+              _brandTag(
+                Icons.phone_android,
+                "WhatsApp",
+                const Color(0xFF25D366),
+              ),
+              _brandTag(Icons.discord, "Discord", const Color(0xFF5865F2)),
+            ],
+          ),
+          const SizedBox(height: 40),
+
+          // 3. サブボタン（保存・コピー）
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _saveImageLocally(null, context, lang),
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: Text(
+                    T.get('share_save_only', lang),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: themeColor,
+                    side: BorderSide(color: themeColor.withOpacity(0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _copyText(context, lang),
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  label: Text(
+                    T.get('share_copy_text', lang),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: themeColor,
+                    side: BorderSide(color: themeColor.withOpacity(0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 改良版：ブランド名付きのタグ表示 ---
+  Widget _brandTag(IconData icon, String label, Color color) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- ヘルパー群 ---
   Widget _buildRankBadge(String rank) {
     Color badgeColor = Colors.grey;
     if (rank == "S")
@@ -377,121 +537,6 @@ class _MemoriesCardViewState extends State<MemoriesCardView> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionButtons(
-    String lang,
-    BuildContext context,
-    Color themeColor,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          Text(
-            T.get('card_share_hint', lang),
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black45,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 3.2,
-            children: [
-              _buildSnsButton(
-                Icons.close,
-                T.get('share_x', lang),
-                Colors.black,
-                () => _captureAndShareSns('x', lang, context),
-              ),
-              _buildSnsButton(
-                Icons.chat_bubble,
-                T.get('share_line', lang),
-                const Color(0xFF06C755),
-                () => _captureAndShareSns('line', lang, context),
-              ),
-              _buildSnsButton(
-                Icons.phone_android,
-                T.get('share_whatsapp', lang),
-                const Color(0xFF25D366),
-                () => _captureAndShareSns('whatsapp', lang, context),
-              ),
-              _buildSnsButton(
-                Icons.discord,
-                T.get('share_discord', lang),
-                const Color(0xFF5865F2),
-                () => _captureAndShareSns('discord', lang, context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 30),
-          TextButton.icon(
-            onPressed: () => _captureAndSave(context, lang),
-            icon: Icon(
-              Icons.download_rounded,
-              color: themeColor,
-              size: 20,
-            ), // ★ ボタンアイコン連動
-            label: Text(
-              T.get('share_save_btn', lang),
-              style: TextStyle(
-                color: themeColor,
-                fontWeight: FontWeight.bold,
-              ), // ★ ボタン文字連動
-            ),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(
-                  color: themeColor.withValues(alpha: 0.2),
-                ), // ★ 枠線連動
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSnsButton(
-    IconData icon,
-    String label,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

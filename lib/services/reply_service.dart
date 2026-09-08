@@ -15,7 +15,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService();
   AiService get aiService => _aiService;
-  final String appVersion = "1.2";
+  final String appVersion = "1.21";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];

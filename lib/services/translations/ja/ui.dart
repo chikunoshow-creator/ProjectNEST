@@ -237,6 +237,12 @@ const Map<String, String> jaUI = {
   'card_messages': '累計メッセージ数',
   'card_since': '共同生活開始日',
   'menu_memories_card': '思い出カード',
+  // ja/ui.dart の「思い出カード」セクションの近くに追加してください
+  'share_memories_btn': '思い出をシェアする ✨',
+  'share_save_only': '画像を保存する',
+  'share_copy_text': 'テキストをコピー',
+  'share_compatible_apps': '画像付きシェア対応：',
+  'share_failed_fallback': '直接シェアができないブラウザです。画像を保存したよ！',
 
   // --- 関係性 ---
   'user_gender_label': 'あなたの性別',

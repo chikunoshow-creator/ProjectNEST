@@ -243,6 +243,14 @@ const Map<String, String> enUI = {
   'card_messages': 'Total Messages',
   'card_since': 'Anniversary',
   'menu_memories_card': 'Memories Card',
+  // ja/ui.dart の「思い出カード」セクションの近くに追加してください
+  // lib/services/translations/en/ui.dart の中に追加
+  'share_memories_btn': 'Share Memories ✨',
+  'share_save_only': 'Save Image',
+  'share_copy_text': 'Copy Text',
+  'share_compatible_apps': 'Supports image sharing:',
+  'share_failed_fallback':
+      'Browser does not support direct sharing. Image saved instead! ✨',
   // lib/services/translations/en/ui.dart 内の「Relationship」セクションに追加
   'user_gender_label': 'Your Gender',
   'nest_gender_label': "Partner's Gender",
