@@ -5,10 +5,10 @@ enum Gender { male, female, other }
 enum Relationship { lover, bestFriend, sibling, mentor }
 
 class NestProfile {
-  final Gender userGender;
-  final Gender nestGender;
-  final String personality;
-  final Relationship relationship;
+  Gender userGender;
+  Gender nestGender;
+  String personality;
+  Relationship relationship;
 
   NestProfile({
     this.userGender = Gender.other,

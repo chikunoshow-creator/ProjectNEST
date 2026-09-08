@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/reply_service.dart';
 import '../../services/translation_service.dart';
+import '../../models/nest_profile.dart';
 
 class ProfileEditView extends StatefulWidget {
   final ReplyService replyService;
@@ -21,6 +22,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   late TextEditingController _birthdayCtrl;
   late TextEditingController _foodCtrl;
   late TextEditingController _jobCtrl;
+  late Gender _selectedGender;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     );
     _foodCtrl = TextEditingController(text: widget.replyService.userFood);
     _jobCtrl = TextEditingController(text: widget.replyService.userJob);
+    _selectedGender = widget.replyService.partnerProfile.userGender;
   }
 
   @override
@@ -51,7 +54,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     final scaffoldBg = themeColor.withValues(alpha: 0.05);
 
     return Scaffold(
-      backgroundColor: scaffoldBg, // 背景色を連動
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: Text(
           T.get('menu_profile_title', lang),
@@ -59,7 +62,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
         ),
         backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
-        foregroundColor: themeColor, // AppBarの文字・アイコン色を連動
+        foregroundColor: themeColor,
       ),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -78,7 +81,32 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             hint: lang == 'ja' ? "あなたの名前" : "Your Name",
             themeColor: themeColor,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+
+          _buildSectionLabel(T.get('user_gender_label', lang)),
+          Row(
+            children: [
+              _buildGenderChip(
+                Gender.male,
+                T.get('gender_male', lang),
+                themeColor,
+              ),
+              const SizedBox(width: 8),
+              _buildGenderChip(
+                Gender.female,
+                T.get('gender_female', lang),
+                themeColor,
+              ),
+              const SizedBox(width: 8),
+              _buildGenderChip(
+                Gender.other,
+                T.get('gender_other', lang),
+                themeColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
           _buildTextField(
             controller: _birthdayCtrl,
             label: lang == 'ja' ? "誕生日" : "Birthday",
@@ -106,7 +134,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
           ElevatedButton(
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: themeColor, // 保存ボタンの色を連動
+              backgroundColor: themeColor,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
@@ -124,6 +152,42 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     );
   }
 
+  Widget _buildSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: Colors.black54,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderChip(Gender gender, String label, Color themeColor) {
+    final isSelected = _selectedGender == gender;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (val) {
+        if (val) setState(() => _selectedGender = gender);
+      },
+      selectedColor: themeColor.withValues(alpha: 0.2),
+      labelStyle: TextStyle(
+        color: isSelected ? themeColor : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        // ★ ここを修正済み：side を使用
+        side: BorderSide(color: isSelected ? themeColor : Colors.transparent),
+      ),
+    );
+  }
+
   Widget _buildInfoText(String text, Color themeColor) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -133,11 +197,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: themeColor, // インフォアイコンの色を連動
-            size: 20,
-          ),
+          Icon(Icons.info_outline_rounded, color: themeColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -160,22 +220,12 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black54,
-            ),
-          ),
-        ),
+        _buildSectionLabel(label),
         TextField(
           controller: controller,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: themeColor, size: 20), // アイコン色を連動
+            prefixIcon: Icon(icon, color: themeColor, size: 20),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -192,6 +242,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   Future<void> _saveProfile() async {
     await widget.replyService.updateSettings(
       name: _nameCtrl.text,
+      userGender: _selectedGender,
       nestName: widget.replyService.nestName,
       nestAliases: widget.replyService.nestAliases,
       p: widget.replyService.personality,
@@ -208,7 +259,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Profile Updated! ❤️"),
-          backgroundColor: widget.replyService.themeColor, // 通知の色も連動
+          backgroundColor: widget.replyService.themeColor,
           behavior: SnackBarBehavior.floating,
         ),
       );

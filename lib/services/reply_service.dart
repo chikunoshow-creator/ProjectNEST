@@ -15,7 +15,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService();
   AiService get aiService => _aiService;
-  final String appVersion = "1.158";
+  final String appVersion = "1.2";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -49,6 +49,7 @@ class ReplyService {
     "ツンデレ": "Kaede",
   };
 
+  // パートナーのプロファイル情報を保持
   NestProfile partnerProfile = NestProfile();
 
   ReplyService() {
@@ -58,18 +59,15 @@ class ReplyService {
 
   // --- 性格・性別ID管理システム ---
 
-  // 性格に応じた英語IDを取得
   String get charId {
     if (personality == "ツンデレ") return "tsundere";
     if (personality == "クールなお姉さん") return "cool";
     return "clingy";
   }
 
-  // 性別に応じた接尾辞（f または m）を取得
   String get genderKey =>
       (partnerProfile.nestGender == Gender.male) ? "m" : "f";
 
-  // 【最重要】最終的なアセット検索キー (例: clingy_f)
   String get charKey => "${charId}_$genderKey";
 
   // --- 基本ゲッター ---
@@ -127,7 +125,7 @@ class ReplyService {
     return nt.year > last.year || nt.month > last.month || nt.day > last.day;
   }
 
-  // --- データ読み書き ---
+  // --- データ読み書き (Ver 1.45 拡張) ---
 
   Future<void> loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
@@ -153,6 +151,16 @@ class ReplyService {
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
     startDate = prefs.getString(AppConstants.startDateKey) ?? "";
 
+    // ★ 性別・関係性の読み込みと自動補完 (Migration)
+    String uGenderStr = prefs.getString('user_gender') ?? 'male';
+    String nGenderStr = prefs.getString('nest_gender') ?? 'female';
+    String relStr = prefs.getString('relationship') ?? 'lover';
+
+    partnerProfile.userGender = _parseGender(uGenderStr);
+    partnerProfile.nestGender = _parseGender(nGenderStr);
+    partnerProfile.relationship = _parseRelationship(relStr);
+    partnerProfile.personality = personality;
+
     final String? savedMemories = prefs.getString(AppConstants.userMemoriesKey);
     if (savedMemories != null) {
       _userMemories = List<String>.from(jsonDecode(savedMemories));
@@ -172,6 +180,21 @@ class ReplyService {
     }
     selectedTheme = prefs.getString(AppConstants.themeKey) ?? "pink";
     await _loadPersonalityJson();
+  }
+
+  // 文字列からEnumへの変換用ヘルパー
+  Gender _parseGender(String val) {
+    return Gender.values.firstWhere(
+      (e) => e.name == val,
+      orElse: () => Gender.other,
+    );
+  }
+
+  Relationship _parseRelationship(String val) {
+    return Relationship.values.firstWhere(
+      (e) => e.name == val,
+      orElse: () => Relationship.lover,
+    );
   }
 
   Color get themeColor =>
@@ -268,6 +291,9 @@ class ReplyService {
     await prefs.remove(AppConstants.intimacyKey);
     await prefs.remove(AppConstants.chatMessagesKey);
     await prefs.remove(AppConstants.userMemoriesKey);
+    await prefs.remove('user_gender');
+    await prefs.remove('nest_gender');
+    await prefs.remove('relationship');
     await loadHistory();
   }
 
@@ -351,8 +377,7 @@ class ReplyService {
   // --- アルバム・背景 ---
 
   List<Map<String, dynamic>> getAllBackgrounds() {
-    String cp = charKey; // 例: clingy_f
-    // bool isEn = (language == 'en'); // ★ これは不要になります
+    String cp = charKey;
 
     return [
       {
@@ -381,7 +406,7 @@ class ReplyService {
       },
     ];
   }
-  // --- その他設定 ---
+  // --- その他設定 (Ver 1.45 対応) ---
 
   Future<void> saveDiary(DiaryEntry entry) async {
     int idx = _diaries.indexWhere(
@@ -407,6 +432,9 @@ class ReplyService {
     required String nestAliases,
     required String p,
     required String apiKey,
+    Gender userGender = Gender.male, // ★
+    Gender nestGender = Gender.female, // ★
+    Relationship relationship = Relationship.lover, // ★
     String birthday = "",
     String food = "",
     String job = "",
@@ -419,6 +447,19 @@ class ReplyService {
     userBirthday = birthday;
     userFood = food;
     userJob = job;
+
+    // partnerProfile の同期更新
+    partnerProfile.userGender = userGender;
+    partnerProfile.nestGender = nestGender;
+    partnerProfile.relationship = relationship;
+    partnerProfile.personality = p;
+
+    // SharedPreferences への保存
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_gender', userGender.name);
+    await prefs.setString('nest_gender', nestGender.name);
+    await prefs.setString('relationship', relationship.name);
+
     await _storage.saveAllSettings(exportAllData());
     await _loadPersonalityJson();
   }
@@ -458,6 +499,9 @@ class ReplyService {
       'history': _history,
       'diaries': _diaries.map((e) => e.toJson()).toList(),
       'startDate': startDate,
+      'userGender': partnerProfile.userGender.name, // ★
+      'nestGender': partnerProfile.nestGender.name, // ★
+      'relationship': partnerProfile.relationship.name, // ★
       'backupVersion': appVersion,
     };
   }
@@ -483,6 +527,14 @@ class ReplyService {
         .map((e) => DiaryEntry.fromJson(e))
         .toList();
     startDate = data['startDate'] ?? "";
+
+    // データの復元と同期
+    partnerProfile.userGender = _parseGender(data['userGender'] ?? 'male');
+    partnerProfile.nestGender = _parseGender(data['nestGender'] ?? 'female');
+    partnerProfile.relationship = _parseRelationship(
+      data['relationship'] ?? 'lover',
+    );
+
     await prefs.setString(AppConstants.userKey, userName);
     await prefs.setString(AppConstants.nestNameKey, nestName);
     await prefs.setString(AppConstants.nestAliasesKey, nestAliases);
@@ -496,6 +548,9 @@ class ReplyService {
     );
     await prefs.setString(AppConstants.languageKey, language);
     await prefs.setString(AppConstants.bgKey, selectedBg);
+    await prefs.setString('user_gender', partnerProfile.userGender.name);
+    await prefs.setString('nest_gender', partnerProfile.nestGender.name);
+    await prefs.setString('relationship', partnerProfile.relationship.name);
     await _loadPersonalityJson();
   }
 

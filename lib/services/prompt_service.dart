@@ -11,35 +11,52 @@ class PromptService {
     required int intimacyScore,
     required String lang,
   }) {
-    String prompt = "あなたの名前は$nestName、相手は$userNameです。";
+    // 1. 基本設定：名前とユーザーへの呼びかけ（くん/ちゃん）
+    // 例：「あなたの名前はひな、相手はたかしくんです。」
+    String suffixKey = _getUserSuffixKey(profile.userGender);
+    String suffix = T.get(suffixKey, lang);
+    String prompt = "あなたの名前は$nestName、相手は$userName$suffixです。";
 
-    // 柱1 & 2: 性別設定 (male, female, other に対応)
+    // 2. ユーザー性別による振る舞いのスパイス (Ver 1.45)
+    // 女性ユーザーには「共感」、男性ユーザーには「信頼・応援」のスパイスを加える
+    if (profile.userGender == Gender.female) {
+      prompt += " ${T.get('user_context_female', lang)} ";
+    } else if (profile.userGender == Gender.male) {
+      prompt += " ${T.get('user_context_male', lang)} ";
+    }
+
+    // 3. パートナー（NEST）自身の性別振る舞い
     if (profile.nestGender == Gender.male) {
       prompt += "あなたは男性として振る舞ってください。";
     } else if (profile.nestGender == Gender.female) {
       prompt += "あなたは女性として振る舞ってください。";
     }
 
-    if (profile.userGender == Gender.male) {
-      prompt += "相手は男性です。";
-    } else if (profile.userGender == Gender.female) {
-      prompt += "相手は女性です。";
-    } else if (profile.userGender == Gender.other) {
-      prompt += "相手の性別は中性的、あるいは非公開です。";
-    }
-
-    // 柱3: 性格設定 (ReplyServiceの判定ロジックと同期)
+    // 4. 柱：性格設定 (role_sweet, role_cool, role_tsun)
     String pKey = _getPersonalityKey(profile.personality);
     prompt += " ${T.get(pKey, lang)} ";
 
-    // 柱4: 関係性設定
-    String relLabel = _getRelationshipLabel(profile.relationship);
-    prompt += " 二人の関係性は「$relLabel」です。その距離感を大切にして会話してください。";
+    // 5. 柱：関係性設定 (rel_lover, rel_bestFriend 等の詳細な指示)
+    // 単なるラベルではなく、振る舞いに関する具体的なプロンプトを取得
+    String relPromptKey = _getRelationshipPromptKey(profile.relationship);
+    prompt += " ${T.get(relPromptKey, lang)} ";
 
-    // 共通ルール（ガードレールと出力フォーマット）
+    // 6. 共通ルール（ガードレールと出力フォーマット）
     prompt += " ${T.get('guardrails', lang)} ${T.get('format_rule', lang)}";
 
     return prompt;
+  }
+
+  // ユーザーの性別に応じた呼びかけの接尾辞キー（くん/ちゃん/さん）を返す
+  static String _getUserSuffixKey(Gender gender) {
+    switch (gender) {
+      case Gender.male:
+        return 'user_suffix_male';
+      case Gender.female:
+        return 'user_suffix_female';
+      default:
+        return 'user_suffix_none';
+    }
   }
 
   // 性格名から翻訳用のキーを特定
@@ -55,18 +72,17 @@ class PromptService {
     }
   }
 
-  // 関係性Enumから日本語のラベルを取得
-  static String _getRelationshipLabel(Relationship rel) {
+  // 関係性Enumから、詳細な振る舞い指示（プロンプト）の辞書キーを取得
+  static String _getRelationshipPromptKey(Relationship rel) {
     switch (rel) {
       case Relationship.lover:
-        return "恋人";
+        return 'rel_lover';
       case Relationship.bestFriend:
-        return "親友";
+        return 'rel_bestFriend';
       case Relationship.sibling:
-        return "家族のような存在";
+        return 'rel_sibling';
       case Relationship.mentor:
-        return "導き手と教え子";
+        return 'rel_mentor';
     }
-    // ここで default は不要（全ケース網羅済みのため警告が出なくなります）
   }
 }

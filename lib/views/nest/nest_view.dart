@@ -148,6 +148,7 @@ class _NestViewState extends State<NestView> {
                   ),
                 ),
               ),
+
               _buildIntimacyBadge(themeColor), // ★ 色を渡す
             ],
           ),
