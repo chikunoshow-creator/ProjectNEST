@@ -176,6 +176,11 @@ class _WelcomeViewState extends State<WelcomeView> {
           controller: _nameCtrl,
           decoration: InputDecoration(
             labelText: T.get('name_label', lang),
+            hintText: T.get(
+              'name_hint',
+              lang,
+            ), // ★ これを追加するだけで、日本語なら「未入力なら…」、英語なら「Default is...」が出ます
+
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
           ),
         ),
@@ -480,18 +485,28 @@ class _WelcomeViewState extends State<WelcomeView> {
   @override
   void initState() {
     super.initState();
-    _nameCtrl.text = widget.replyService.userName;
+    // 1. デフォルト名（あなた/Guest）の場合は空欄にしてhintTextを表示させる
+    final currentName = widget.replyService.userName;
+    if (currentName == "あなた" || currentName == "Guest") {
+      _nameCtrl.text = "";
+    } else {
+      _nameCtrl.text = currentName;
+    }
+
     _keyCtrl.text = widget.replyService.groqApiKey;
-    // ★ リセット時でも「前回の設定」を初期値として表示するために同期
+    // リセット時でも前回の設定を初期値として同期
     _selectedUserGender = widget.replyService.partnerProfile.userGender;
     _selectedRel = widget.replyService.partnerProfile.relationship;
 
+    // 2. 「カスタムした自分の名前」がすでに登録されているかチェック
     bool hasName =
-        _nameCtrl.text.isNotEmpty &&
-        _nameCtrl.text != "あなた" &&
-        _nameCtrl.text != "Guest";
+        currentName.isNotEmpty &&
+        currentName != "あなた" &&
+        currentName != "Guest";
     bool hasKey = _keyCtrl.text.isNotEmpty;
-    if (hasName && hasKey) _step = 1; // ★ ステップ数増加に合わせて調整
+
+    // 名前とAPIキーが揃っていればステップ1（性別・関係性確認）から開始
+    if (hasName && hasKey) _step = 1;
   }
 
   void _finish() async {
