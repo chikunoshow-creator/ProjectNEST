@@ -15,7 +15,7 @@ class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService();
   AiService get aiService => _aiService;
-  final String appVersion = "1.22";
+  final String appVersion = "1.23";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -325,6 +325,7 @@ class ReplyService {
   Future<String> createReply(String msg) async {
     final prefs = await SharedPreferences.getInstance();
 
+    // --- 1. 記憶（Memory）ブロックの生成 ---
     String memoryBlock = "";
     if (_userMemories.isNotEmpty) {
       memoryBlock = T
@@ -332,6 +333,35 @@ class ReplyService {
           .replaceAll('{memories}', _userMemories.join('、'));
     }
 
+    // --- 2. 【Ver 1.23】直近の日記（Diary）ハイライトの生成 ---
+    String diaryBlock = "";
+    if (_diaries.isNotEmpty) {
+      final latestDiary = _diaries.first; // ★ 先頭が最新
+
+      // タイトル・気分の安全な取得（空文字フォールバック）
+      final title = latestDiary.title.isNotEmpty
+          ? latestDiary.title
+          : (language == 'en' ? "Today's Diary" : "今日の日記");
+      final mood = latestDiary.mood.isNotEmpty ? latestDiary.mood : "✨";
+
+      // 本文から最初の1文（または最大40文字）を抽出
+      String snippet = latestDiary.content.replaceAll('\n', ' ');
+      if (snippet.contains('。')) {
+        snippet = snippet.split('。').first + '。';
+      } else if (snippet.contains('.')) {
+        snippet = snippet.split('.').first + '.';
+      } else if (snippet.length > 40) {
+        snippet = snippet.substring(0, 40) + '…';
+      }
+
+      diaryBlock = T
+          .get('diary_context', language)
+          .replaceAll('{title}', title)
+          .replaceAll('{mood}', mood)
+          .replaceAll('{snippet}', snippet);
+    }
+
+    // --- 3. システムプロンプトの合成 ---
     String basePrompt = PromptService.buildSystemPrompt(
       profile: partnerProfile,
       nestName: nestName,
@@ -340,14 +370,25 @@ class ReplyService {
       lang: language,
     );
 
-    String systemPrompt = basePrompt;
+    // 日記・記憶の追加コンテキストをまとめる
+    String extraContext = "";
+    if (diaryBlock.isNotEmpty) {
+      extraContext += "$diaryBlock\n\n";
+    }
     if (memoryBlock.isNotEmpty) {
+      extraContext += "$memoryBlock ";
+    }
+
+    // guardrails の直前に安全に割り込ませる
+    String systemPrompt = basePrompt;
+    if (extraContext.isNotEmpty) {
       systemPrompt = basePrompt.replaceFirst(
         T.get('guardrails', language),
-        "$memoryBlock ${T.get('guardrails', language)}",
+        "$extraContext${T.get('guardrails', language)}",
       );
     }
 
+    // --- 以降の Groq 呼び出し等は既存のまま一切変更なし ---
     final reply = await _aiService.fetchGroqReply(
       apiKey: groqApiKey,
       systemPrompt: systemPrompt,

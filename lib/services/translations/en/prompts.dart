@@ -39,6 +39,8 @@ const Map<String, String> enPrompts = {
       'As an AI partner (Personality: {personality}), extract up to 3 "observations about the partner" from today\'s conversation. Return ONLY JSON: {"memories": ["...", "..."]}',
   'memory_context':
       '[Facts you know about your partner]\n{memories}\nNaturally use this information to make the conversation more personal.',
+  'diary_context':
+      '[Your Recent Private Diary Entry]\nTitle: "{title}" ({mood}): {snippet}\n*If your partner mentions the diary, naturally recall this as your own private thought. Do not force this topic into unrelated daily conversation.',
 
   // --- Ver 1.45 Gender & Relationship ---
   'user_suffix_male': '',
