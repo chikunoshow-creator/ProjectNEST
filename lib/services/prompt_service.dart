@@ -32,6 +32,9 @@ class PromptService {
       prompt += "あなたは女性として振る舞ってください。";
     }
 
+    // ★【Ver 1.23】NEST共通会話エンジン（11の原則：Base Conversation Style）
+    prompt += " ${T.get('core_conversation_style', lang)} ";
+
     // 4. 柱：性格設定 (role_sweet, role_cool, role_tsun)
     String pKey = _getPersonalityKey(profile.personality);
     prompt += " ${T.get(pKey, lang)} ";
