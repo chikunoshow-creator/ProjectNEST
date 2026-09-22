@@ -133,6 +133,16 @@ const Map<String, String> enUI = {
   'theme_title': 'Choose a theme color',
   'pwa_note': '※ Meet NEST anytime from your home screen! ❤️',
 
+  // --- Message Selection & Actions ---
+  'action_copy': 'Copy',
+  'action_delete': 'Delete',
+  'select_all': 'Select All',
+  'btn_cancel': 'Cancel',
+  'copied_toast': 'Copied to clipboard',
+  'delete_bulk_title': 'Organize Memories',
+  'delete_bulk_confirm':
+      'Delete {count} messages?\n(This only removes them from your screen)',
+
   // --- Welcome ---
   'welcome_title': 'Nice to meet you!',
   'welcome_msg':

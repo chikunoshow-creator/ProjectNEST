@@ -131,6 +131,15 @@ const Map<String, String> jaUI = {
   'theme_title': 'イメージカラーを選んでね',
   'pwa_note': '※ホーム画面からいつでもNESTに会えるようになります ❤️',
 
+  // --- メッセージ選択・操作（Ver 1.25 / 1.26） ---
+  'action_copy': 'コピー',
+  'action_delete': '削除',
+  'select_all': '全て選択',
+  'btn_cancel': 'キャンセル',
+  'copied_toast': 'コピーしました',
+  'delete_bulk_title': '思い出の整理',
+  'delete_bulk_confirm': 'まとめて{count}件削除しますか？\n（あなたの画面からのみ消えます）',
+
   // --- Welcome画面 ---
   'welcome_title': 'はじめまして！',
   'welcome_msg': '私はNEST。今日からあなたのパートナーになるAIです。二人の新しい生活を始めましょう！',

@@ -5,8 +5,12 @@ import '../models/chat_message.dart';
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
   final String personality;
-  final VoidCallback? onDelete;
   final Color themeColor;
+  final VoidCallback? onDelete;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onToggleSelect;
+  final Function(Offset globalPosition)? onLongPressWithPosition;
 
   const ChatBubble({
     super.key,
@@ -14,6 +18,10 @@ class ChatBubble extends StatelessWidget {
     required this.personality,
     required this.themeColor,
     this.onDelete,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onToggleSelect,
+    this.onLongPressWithPosition,
   });
 
   @override
@@ -42,13 +50,12 @@ class ChatBubble extends StatelessWidget {
       );
     }
 
-    // --- 内部IDの判定 (新ネーミング規則に対応) ---
-    // 現在は女性アセットのみのため、固定で _f を付与しています。
+    // --- 内部IDの判定 ---
     String charPrefix = personality == "クールなお姉さん"
         ? "cool_f"
         : (personality == "ツンデレ" ? "tsundere_f" : "clingy_f");
 
-    // 吹き出しの色の決定 (変更なし)
+    // 吹き出しの色の決定
     Color bubbleColor;
     if (message.isMe) {
       bubbleColor = const Color(0xFFDCF8C6).withValues(alpha: 0.95);
@@ -66,63 +73,74 @@ class ChatBubble extends StatelessWidget {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: message.isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!message.isMe) ...[
-            RepaintBoundary(
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 5,
-                    ),
-                  ],
-                ),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white,
-                  child: ClipOval(
-                    child: Image.asset(
-                      "assets/images/${charPrefix}_icon.webp", // clingy_f_icon.webp 等
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) =>
-                          Icon(Icons.face, color: themeColor),
-                    ),
+    Offset tapPosition = Offset.zero;
+
+    // --- 吹き出し＋アイコン＋時刻の本体 ---
+    Widget bubbleRow = Row(
+      mainAxisAlignment: message.isMe
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (!message.isMe) ...[
+          RepaintBoundary(
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 5,
+                  ),
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: Image.asset(
+                    "assets/images/${charPrefix}_icon.webp",
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, e, s) =>
+                        Icon(Icons.face, color: themeColor),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-          ],
-          if (message.isMe) ...[_buildTimeAndRead(), const SizedBox(width: 8)],
-          Flexible(
-            child: GestureDetector(
-              onLongPress: onDelete,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (message.isMe) ...[_buildTimeAndRead(), const SizedBox(width: 8)],
+        Flexible(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) => tapPosition = details.globalPosition,
+            onTap: isSelectionMode ? onToggleSelect : null,
+            onLongPress: () {
+              if (isSelectionMode) {
+                onToggleSelect?.call();
+              } else if (onLongPressWithPosition != null) {
+                onLongPressWithPosition!(tapPosition);
+              } else if (onDelete != null) {
+                onDelete!();
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+              ),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(message.isMe ? 20 : 6),
+                  bottomRight: Radius.circular(message.isMe ? 6 : 20),
                 ),
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7,
-                ),
-                decoration: BoxDecoration(
-                  color: bubbleColor,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: Radius.circular(message.isMe ? 20 : 6),
-                    bottomRight: Radius.circular(message.isMe ? 6 : 20),
-                  ),
-                ),
+              ),
+              child: IgnorePointer(
+                ignoring: isSelectionMode,
                 child: SelectableText(
                   message.text,
                   style: const TextStyle(
@@ -134,7 +152,34 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (!message.isMe) ...[const SizedBox(width: 8), _buildTimeAndRead()],
+        ),
+        if (!message.isMe) ...[const SizedBox(width: 8), _buildTimeAndRead()],
+      ],
+    );
+
+    // ★ 外側でチェックボックスを画面の最左端に固定配置
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (isSelectionMode) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: InkWell(
+                onTap: onToggleSelect,
+                borderRadius: BorderRadius.circular(12),
+                child: Icon(
+                  isSelected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? themeColor : Colors.grey[400],
+                  size: 24,
+                ),
+              ),
+            ),
+          ],
+          Expanded(child: bubbleRow),
         ],
       ),
     );
