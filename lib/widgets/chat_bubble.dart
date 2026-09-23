@@ -139,9 +139,9 @@ class ChatBubble extends StatelessWidget {
                   bottomRight: Radius.circular(message.isMe ? 6 : 20),
                 ),
               ),
-              child: IgnorePointer(
-                ignoring: isSelectionMode,
-                child: SelectableText(
+              // ★【修正点】SelectableTextを廃止し、テキスト選択によるジェスチャー競合を完全根絶
+              child: SelectionContainer.disabled(
+                child: Text(
                   message.text,
                   style: const TextStyle(
                     fontSize: 15,
@@ -157,7 +157,7 @@ class ChatBubble extends StatelessWidget {
       ],
     );
 
-    // ★ 外側でチェックボックスを画面の最左端に固定配置
+    // 外側でチェックボックスを画面の最左端に固定配置
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
       child: Row(
