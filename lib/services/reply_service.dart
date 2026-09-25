@@ -10,12 +10,14 @@ import 'reply_storage_service.dart';
 import 'package:flutter/material.dart';
 import '../models/nest_profile.dart';
 import 'prompt_service.dart';
+import 'weather_service.dart'; // ★ この1行を追加してください
 
 class ReplyService {
   final AiService _aiService = AiService();
   final ReplyStorageService _storage = ReplyStorageService();
+  final WeatherService _weatherService = WeatherService(); // ★【Ver 1.27 最終統合】追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.265";
+  final String appVersion = "1.27";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
@@ -34,7 +36,10 @@ class ReplyService {
   bool isFirstLaunch = true;
   String startDate = "";
   String selectedTheme = "pink";
-
+  // --- 既存フィールド群の周辺に追加 ---
+  String userCountry = "JP"; // ★ 将来の海外対応用（国コードまたは国名）
+  String userRegion = ""; // ★ 地域・都市名（例: 東京都、大阪府、NYなど）
+  String currentWeatherSummary = ""; // ★ 天気情報キャッシュ用（例: 晴れ 18℃）
   List<String> _userMemories = [];
   Map<String, dynamic>? _personalityData;
 
@@ -125,6 +130,20 @@ class ReplyService {
     return nt.year > last.year || nt.month > last.month || nt.day > last.day;
   }
 
+  // ★【Ver 1.27 最終統合】地域が設定されている場合のみバックグラウンドで天気更新
+  Future<void> updateWeather() async {
+    if (userRegion.trim().isEmpty) {
+      currentWeatherSummary = "";
+      return;
+    }
+    final summary = await _weatherService.fetchWeather(
+      region: userRegion,
+      lang: language,
+    );
+    if (summary != null) {
+      currentWeatherSummary = summary;
+    }
+  }
   // --- データ読み書き (Ver 1.45 拡張) ---
 
   Future<void> loadHistory() async {
@@ -150,6 +169,9 @@ class ReplyService {
     selectedBg = prefs.getString(AppConstants.bgKey) ?? "default";
     isFirstLaunch = prefs.getBool(AppConstants.firstLaunchKey) ?? true;
     startDate = prefs.getString(AppConstants.startDateKey) ?? "";
+    // loadHistory() 内に追加
+    userCountry = prefs.getString('user_country') ?? "JP";
+    userRegion = prefs.getString('user_region') ?? "";
 
     // ★ 性別・関係性の読み込みと自動補完 (Migration)
     String uGenderStr = prefs.getString('user_gender') ?? 'male';
@@ -180,6 +202,9 @@ class ReplyService {
     }
     selectedTheme = prefs.getString(AppConstants.themeKey) ?? "pink";
     await _loadPersonalityJson();
+
+    // ★【Ver 1.27 最終統合】起動時にバックグラウンドで天気を更新
+    updateWeather();
   }
 
   // 文字列からEnumへの変換用ヘルパー
@@ -294,6 +319,9 @@ class ReplyService {
     await prefs.remove('user_gender');
     await prefs.remove('nest_gender');
     await prefs.remove('relationship');
+    // resetNest() 内に追加
+    await prefs.remove('user_country');
+    await prefs.remove('user_region');
     await loadHistory();
   }
 
@@ -361,6 +389,19 @@ class ReplyService {
           .replaceAll('{snippet}', snippet);
     }
 
+    // --- ★【Ver 1.27 最終統合】天気・環境コンテキストの動的生成 ---
+    // 地域が設定され、かつ天気データが存在する場合のみコンテキストを生成
+    String weatherContext = "";
+    if (userRegion.trim().isNotEmpty &&
+        currentWeatherSummary.trim().isNotEmpty) {
+      final String locationText = "$userCountry・$userRegion";
+      weatherContext = PromptService.formatWeatherContext(
+        location: locationText,
+        weather: currentWeatherSummary,
+        lang: language,
+      );
+    }
+
     // --- 3. システムプロンプトの合成 ---
     String basePrompt = PromptService.buildSystemPrompt(
       profile: partnerProfile,
@@ -368,6 +409,8 @@ class ReplyService {
       userName: userName,
       intimacyScore: intimacyScore,
       lang: language,
+      now: DateTime.now(), // ★【Ver 1.27】送信時点のクライアント現在時刻を明示
+      weatherContext: weatherContext, // ★【Ver 1.27 Step 1】注入
     );
 
     // 日記・記憶の追加コンテキストをまとめる
@@ -479,6 +522,8 @@ class ReplyService {
     String birthday = "",
     String food = "",
     String job = "",
+    String country = "JP", // ★【Ver 1.27 Step 2】追加
+    String region = "", // ★【Ver 1.27 Step 2】追加
   }) async {
     userName = name;
     this.nestName = nestName;
@@ -488,6 +533,8 @@ class ReplyService {
     userBirthday = birthday;
     userFood = food;
     userJob = job;
+    userCountry = country; // ★【Ver 1.27 Step 2】追加
+    userRegion = region; // ★【Ver 1.27 Step 2】追加
 
     // partnerProfile の同期更新
     partnerProfile.userGender = userGender;
@@ -500,9 +547,14 @@ class ReplyService {
     await prefs.setString('user_gender', userGender.name);
     await prefs.setString('nest_gender', nestGender.name);
     await prefs.setString('relationship', relationship.name);
+    await prefs.setString('user_country', userCountry); // ★【Ver 1.27 Step 2】追加
+    await prefs.setString('user_region', userRegion); // ★【Ver 1.27 Step 2】追加
 
     await _storage.saveAllSettings(exportAllData());
     await _loadPersonalityJson();
+
+    // ★【Ver 1.27 最終統合】設定変更時に最新の天気を取得
+    await updateWeather();
   }
 
   Future<void> completeSetup() async {
@@ -544,6 +596,9 @@ class ReplyService {
       'nestGender': partnerProfile.nestGender.name, // ★
       'relationship': partnerProfile.relationship.name, // ★
       'backupVersion': appVersion,
+      // exportAllData() 内に追加
+      'userCountry': userCountry,
+      'userRegion': userRegion,
     };
   }
 
@@ -568,7 +623,8 @@ class ReplyService {
         .map((e) => DiaryEntry.fromJson(e))
         .toList();
     startDate = data['startDate'] ?? "";
-
+    userCountry = data['userCountry'] ?? "JP";
+    userRegion = data['userRegion'] ?? "";
     // データの復元と同期
     partnerProfile.userGender = _parseGender(data['userGender'] ?? 'male');
     partnerProfile.nestGender = _parseGender(data['nestGender'] ?? 'female');
@@ -593,6 +649,8 @@ class ReplyService {
     await prefs.setString('nest_gender', partnerProfile.nestGender.name);
     await prefs.setString('relationship', partnerProfile.relationship.name);
     await _loadPersonalityJson();
+    await prefs.setString('user_country', userCountry);
+    await prefs.setString('user_region', userRegion);
   }
 
   Future<String?> getBackupDate() async {

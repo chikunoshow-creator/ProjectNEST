@@ -91,6 +91,8 @@ const Map<String, String> enUI = {
   'user_birthday': 'Birthday',
   'user_fav_food': 'Favorite Food',
   'user_job': 'Job / Hobby',
+  'user_region_label': 'Your Location / Region', // ★【Ver 1.27 Step 2】追加
+  'user_region_hint': 'e.g. Tokyo, Osaka, New York', // ★【Ver 1.27 Step 2】追加
   'save_complete': 'Settings saved!',
   'edit_nest': 'NEST Settings',
   'nest_name_label': 'Her Name',
@@ -101,6 +103,15 @@ const Map<String, String> enUI = {
   'gender_male': 'Male',
   'gender_female': 'Female',
   'gender_other': 'Non-binary',
+
+  // --- Weather Condition Labels (Ver 1.27 Step 3) ---
+  'weather_clear': 'Clear sky',
+  'weather_partly_cloudy': 'Partly cloudy',
+  'weather_cloudy': 'Cloudy',
+  'weather_fog': 'Fog',
+  'weather_rain': 'Rain',
+  'weather_snow': 'Snow',
+  'weather_thunder': 'Thunderstorm',
 
   // --- Album & Backgrounds ---
   'album': 'Memories Album',

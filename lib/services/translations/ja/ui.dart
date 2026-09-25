@@ -89,6 +89,8 @@ const Map<String, String> jaUI = {
   'user_birthday': '誕生日',
   'user_fav_food': '好きな食べ物',
   'user_job': '仕事 / 趣味',
+  'user_region_label': 'お住まいの地域', // ★【Ver 1.27 Step 2】追加
+  'user_region_hint': '例: 東京都、大阪市、北海道など', // ★【Ver 1.27 Step 2】追加
   'save_complete': '設定を保存したよ！',
   'edit_nest': 'NESTの設定',
   'nest_name_label': '彼女の名前',
@@ -99,6 +101,15 @@ const Map<String, String> jaUI = {
   'gender_male': '男性',
   'gender_female': '女性',
   'gender_other': '中性的',
+
+  // --- 天気状態ラベル（Ver 1.27 Step 3） ---
+  'weather_clear': '快晴',
+  'weather_partly_cloudy': '晴れ',
+  'weather_cloudy': 'くもり',
+  'weather_fog': '霧',
+  'weather_rain': '雨',
+  'weather_snow': '雪',
+  'weather_thunder': '雷雨',
 
   // --- アルバム・背景 ---
   'album': '思い出アルバム',

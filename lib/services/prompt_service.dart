@@ -10,15 +10,15 @@ class PromptService {
     required String userName,
     required int intimacyScore,
     required String lang,
+    DateTime? now,
+    String? weatherContext, // ★【Ver 1.27 Step 1】追加
   }) {
     // 1. 基本設定：名前とユーザーへの呼びかけ（くん/ちゃん）
-    // 例：「あなたの名前はひな、相手はたかしくんです。」
     String suffixKey = _getUserSuffixKey(profile.userGender);
     String suffix = T.get(suffixKey, lang);
     String prompt = "あなたの名前は$nestName、相手は$userName$suffixです。";
 
     // 2. ユーザー性別による振る舞いのスパイス (Ver 1.45)
-    // 女性ユーザーには「共感」、男性ユーザーには「信頼・応援」のスパイスを加える
     if (profile.userGender == Gender.female) {
       prompt += " ${T.get('user_context_female', lang)} ";
     } else if (profile.userGender == Gender.male) {
@@ -32,6 +32,17 @@ class PromptService {
       prompt += "あなたは女性として振る舞ってください。";
     }
 
+    // ★【Ver 1.27】現在日時のコンテキスト注入（自然な時間感覚）
+    final DateTime current = now ?? DateTime.now();
+    final String formattedTime = _formatTimeContext(current, lang);
+    prompt +=
+        " ${T.get('time_context', lang).replaceAll('{time}', formattedTime)} ";
+
+    // ★【Ver 1.27 Step 1】天気・環境コンテキスト注入（値がある場合のみ結合）
+    if (weatherContext != null && weatherContext.trim().isNotEmpty) {
+      prompt += " $weatherContext ";
+    }
+
     // ★【Ver 1.23】NEST共通会話エンジン（11の原則：Base Conversation Style）
     prompt += " ${T.get('core_conversation_style', lang)} ";
 
@@ -40,7 +51,6 @@ class PromptService {
     prompt += " ${T.get(pKey, lang)} ";
 
     // 5. 柱：関係性設定 (rel_lover, rel_bestFriend 等の詳細な指示)
-    // 単なるラベルではなく、振る舞いに関する具体的なプロンプトを取得
     String relPromptKey = _getRelationshipPromptKey(profile.relationship);
     prompt += " ${T.get(relPromptKey, lang)} ";
 
@@ -50,7 +60,43 @@ class PromptService {
     return prompt;
   }
 
-  // ユーザーの性別に応じた呼びかけの接尾辞キー（くん/ちゃん/さん）を返す
+  // ★【Ver 1.27 Step 1】天気コンテキストの整形ヘルパー（翻訳辞書分離ルールを遵守）
+  static String formatWeatherContext({
+    required String location,
+    required String weather,
+    required String lang,
+  }) {
+    if (location.trim().isEmpty && weather.trim().isEmpty) return "";
+    return T
+        .get('weather_context', lang)
+        .replaceAll(
+          '{location}',
+          location.isNotEmpty ? location : (lang == 'ja' ? '未設定' : 'Unknown'),
+        )
+        .replaceAll(
+          '{weather}',
+          weather.isNotEmpty ? weather : (lang == 'ja' ? '不明' : 'Unknown'),
+        );
+  }
+
+  // 日時フォーマット用ヘルパー
+  static String _formatTimeContext(DateTime dt, String lang) {
+    const jaDays = ['月', '火', '水', '木', '金', '土', '日'];
+    const enDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    final int dayIndex = dt.weekday - 1;
+    final String dayStr = (lang == 'ja') ? jaDays[dayIndex] : enDays[dayIndex];
+
+    final String y = dt.year.toString().padLeft(4, '0');
+    final String m = dt.month.toString().padLeft(2, '0');
+    final String d = dt.day.toString().padLeft(2, '0');
+    final String hh = dt.hour.toString().padLeft(2, '0');
+    final String mm = dt.minute.toString().padLeft(2, '0');
+    final String tz = dt.timeZoneName.isNotEmpty ? " ${dt.timeZoneName}" : "";
+
+    return "$y-$m-$d $hh:$mm ($dayStr)$tz";
+  }
+
   static String _getUserSuffixKey(Gender gender) {
     switch (gender) {
       case Gender.male:
@@ -62,7 +108,6 @@ class PromptService {
     }
   }
 
-  // 性格名から翻訳用のキーを特定
   static String _getPersonalityKey(String personality) {
     switch (personality) {
       case "クールなお姉さん":
@@ -75,7 +120,6 @@ class PromptService {
     }
   }
 
-  // 関係性Enumから、詳細な振る舞い指示（プロンプト）の辞書キーを取得
   static String _getRelationshipPromptKey(Relationship rel) {
     switch (rel) {
       case Relationship.lover:

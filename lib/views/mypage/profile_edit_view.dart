@@ -22,6 +22,8 @@ class _ProfileEditViewState extends State<ProfileEditView> {
   late TextEditingController _birthdayCtrl;
   late TextEditingController _foodCtrl;
   late TextEditingController _jobCtrl;
+  late TextEditingController _regionCtrl; // ★【Ver 1.27 Step 2】追加
+
   late Gender _selectedGender;
 
   @override
@@ -35,6 +37,9 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     );
     _foodCtrl = TextEditingController(text: widget.replyService.userFood);
     _jobCtrl = TextEditingController(text: widget.replyService.userJob);
+    _regionCtrl = TextEditingController(
+      text: widget.replyService.userRegion,
+    ); // ★【Ver 1.27 Step 2】追加
     _selectedGender = widget.replyService.partnerProfile.userGender;
   }
 
@@ -44,6 +49,7 @@ class _ProfileEditViewState extends State<ProfileEditView> {
     _birthdayCtrl.dispose();
     _foodCtrl.dispose();
     _jobCtrl.dispose();
+    _regionCtrl.dispose(); // ★【Ver 1.27 Step 2】追加
     super.dispose();
   }
 
@@ -128,6 +134,15 @@ class _ProfileEditViewState extends State<ProfileEditView> {
             label: lang == 'ja' ? "お仕事" : "Occupation",
             icon: Icons.work_rounded,
             hint: lang == 'ja' ? "エンジニア、学生、など" : "e.g. Engineer, Student",
+            themeColor: themeColor,
+          ),
+          const SizedBox(height: 16),
+          // ★【Ver 1.27 Step 2】お住まいの地域入力フィールドを追加
+          _buildTextField(
+            controller: _regionCtrl,
+            label: T.get('user_region_label', lang),
+            icon: Icons.location_on_rounded,
+            hint: T.get('user_region_hint', lang),
             themeColor: themeColor,
           ),
           const SizedBox(height: 40),
@@ -250,6 +265,8 @@ class _ProfileEditViewState extends State<ProfileEditView> {
       birthday: _birthdayCtrl.text,
       food: _foodCtrl.text,
       job: _jobCtrl.text,
+      country: widget.replyService.userCountry, // ★【Ver 1.27 Step 2】将来の国設定を維持
+      region: _regionCtrl.text.trim(), // ★【Ver 1.27 Step 2】入力地域を渡す
     );
 
     widget.onSettingsUpdated();
