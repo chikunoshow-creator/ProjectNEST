@@ -17,7 +17,7 @@ class ReplyService {
   final ReplyStorageService _storage = ReplyStorageService();
   final WeatherService _weatherService = WeatherService(); // ★【Ver 1.27 最終統合】追加
   AiService get aiService => _aiService;
-  final String appVersion = "1.27";
+  final String appVersion = "1.275";
 
   List<Map<String, String>> _history = [];
   List<DiaryEntry> _diaries = [];
