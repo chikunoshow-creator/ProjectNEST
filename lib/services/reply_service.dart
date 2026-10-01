@@ -229,16 +229,29 @@ class ReplyService {
   Color get itemBg => themeColor.withValues(alpha: 0.1);
 
   Future<DiaryEntry> generateDiary() async {
+    // ★ 英語モード時は英語の表示名（Hina / Guest 等）と英語性格名を採用
+    final activeUserName = displayUserName;
+    final activeNestName = displayName;
+    final activePersonality = (language == 'en')
+        ? (personality == "ツンデレ"
+              ? "Tsundere"
+              : (personality == "クールなお姉さん"
+                    ? "Cool & Mature"
+                    : "Sweet & Clingy"))
+        : personality;
+
+    // 1. 会話履歴のテキスト化（ロール名も多言語表示名を使用）
     String historyText = _history
         .map((m) {
-          String role = (m['role'] == 'user') ? userName : displayName;
+          String role = (m['role'] == 'user') ? activeUserName : activeNestName;
           return "$role: ${m['content']}";
         })
         .join("\n");
 
+    // 2. 記憶抽出（多言語対応した性格名を渡す）
     List<String> newMemories = await _aiService.extractMemories(
       apiKey: groqApiKey,
-      personality: personality,
+      personality: activePersonality,
       historyText: historyText,
       language: language,
     );
@@ -250,16 +263,24 @@ class ReplyService {
       jsonEncode(_userMemories),
     );
 
-    String memoryNote = "【あなたが気づいたパートナーのこと】\n${_userMemories.join('、')}\n\n";
+    // ★ 3. メモリノートの多言語化（日本語ハードコードを撤廃し、辞書ヘッダーと適切な区切り文字を使用）
+    String memoryNote = "";
+    if (_userMemories.isNotEmpty) {
+      final header = T.get('diary_memory_header', language);
+      final delimiter = (language == 'en') ? ', ' : '、';
+      memoryNote = "$header${_userMemories.join(delimiter)}\n\n";
+    }
 
+    // 4. 日記生成（英語環境の表示名・性格名を渡す）
     final Map<String, String> diaryData = await _aiService.generateDiaryContent(
       apiKey: groqApiKey,
-      personality: personality,
-      nestName: nestName,
-      userName: userName,
+      personality: activePersonality,
+      nestName: activeNestName,
+      userName: activeUserName,
       historyText: memoryNote + historyText,
       language: language,
     );
+
     return DiaryEntry(
       date: nestToday,
       title: diaryData['title'] ?? (language == 'en' ? "Today" : "今日の日記"),

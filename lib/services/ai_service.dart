@@ -71,11 +71,17 @@ class AiService {
     required String language,
   }) async {
     // 命令文を T.get で取得し、{nestName} と {userName} を実際の名前に置き換える
-    final String systemPrompt = T
+    String systemPrompt = T
         .get('diary_ai_system_prompt', language)
         .replaceAll('{personality}', personality)
-        .replaceAll('{nestName}', nestName) // ★ここでお前の名前は◯◯だと教える
-        .replaceAll('{userName}', userName); // ★相手の名前は◯◯だと教える
+        .replaceAll('{nestName}', nestName)
+        .replaceAll('{userName}', userName);
+
+    // ★【追加】英語モード時の絶対言語ガードレール（フェイルセーフ）
+    if (language == 'en') {
+      systemPrompt +=
+          " CRITICAL: The entire output (title and content) MUST be strictly in English only. Never use Japanese.";
+    }
 
     final String userPrefix = T.get('diary_ai_user_prefix', language);
 
@@ -133,9 +139,15 @@ class AiService {
     required String historyText,
     required String language,
   }) async {
-    final String systemPrompt = T
+    String systemPrompt = T
         .get('memory_extraction_prompt', language)
         .replaceAll('{personality}', personality);
+
+    // ★【追加】英語モード時の絶対言語ガードレール（フェイルセーフ）
+    if (language == 'en') {
+      systemPrompt +=
+          " CRITICAL: All extracted observations MUST be written strictly in English only.";
+    }
 
     try {
       final response = await http.post(
